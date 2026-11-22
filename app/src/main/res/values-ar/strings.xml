@@ -1,0 +1,211 @@
+<resources>
+    <string name="app_name">N Launcher</string>
+    <string name="default_tagline">شعار N الشخصي</string>
+    <string name="default_photo_caption">إطار الصور</string>
+    <string name="search_placeholder">ابحث عن أي تطبيق…</string>
+    <string name="all_apps_title">جميع التطبيقات</string>
+    <string name="apps_count_label">%1$d تطبيق</string>
+    <string name="no_apps_found">لا توجد تطبيقات مطابقة</string>
+    <string name="clear_search">مسح البحث</string>
+    <string name="open_drawer_cd">فتح قائمة التطبيقات عبر شعار N</string>
+    <string name="close_cd">إغلاق</string>
+
+    <!-- Default Launcher Gate -->
+    <string name="gate_badge">لانشر النظام الرئيسي</string>
+    <string name="gate_title">اجعل N Launcher واجهة هاتفك الأساسية</string>
+    <string name="gate_subtitle">لتغيير واجهة هاتفك بالكامل، تعيين زر N العائم، وتخصيص ألوان التطبيقات والصفحات، عيّن التطبيق كلانشر رئيسي للهاتف.</string>
+    <string name="gate_step_1">تغيير واجهة الشاشة الرئيسية بالكامل</string>
+    <string name="gate_step_2">زر N العائم وبحث فوري عن التطبيقات</string>
+    <string name="gate_step_3">تلوين جميع الأيقونات وتخصيص الشعارات</string>
+    <string name="gate_cta_primary">تعيين كلانشر رئيسي الآن</string>
+    <string name="gate_cta_secondary">الدخول للمعاينة الآن</string>
+
+    <!-- Home & Pages -->
+    <string name="long_press_hint">اضغط مطولاً في أي فراغ لترتيب التطبيقات • افتح الثيمات للتخصيص</string>
+    <string name="empty_page_title">نافذة فارغة جاهزة لك</string>
+    <string name="empty_page_subtitle">اضغط هنا لإضافة تطبيقات ومزايا، أو اضغط مطولاً لوضع التحريك</string>
+    <string name="add_to_this_page">إضافة إلى هذه النافذة</string>
+    <string name="page_main_label">الرئيسية</string>
+    <string name="page_numbered_label">نافذة %1$d</string>
+
+    <!-- Long-Press Visual Hub -->
+    <string name="hub_title">تخصيص هذه النافذة</string>
+    <string name="hub_subtitle">اختر ما تريد إضافته أو تعديله بالضغط</string>
+    <string name="tab_add_apps">تطبيقات</string>
+    <string name="tab_add_widgets">مزايا</string>
+    <string name="tab_icon_colors">الألوان</string>
+    <string name="tab_pages_look">النوافذ</string>
+
+    <string name="add_folder_card">إنشاء مجموعة تطبيقات</string>
+    <string name="add_folder_desc">ضع عدة تطبيقات معاً في خانة واحدة</string>
+    <string name="pin_apps_title">اختر التطبيقات الظاهرة في هذه النافذة</string>
+    <string name="widgets_picker_title">اختر المزايا التي تريد إضافتها هنا</string>
+    <string name="added_badge">مضافة</string>
+    <string name="add_badge">إضافة</string>
+    <string name="remove_badge">إزالة</string>
+
+    <!-- Icon Colors & Custom App Logo -->
+    <string name="icon_pack_title">لون ومظهر جميع التطبيقات</string>
+    <string name="icon_pack_desc">حوّل ألوان كل التطبيقات دفعة واحدة (مثل الأسود والأحمر)</string>
+    <string name="custom_bg_color">لون الخلفية</string>
+    <string name="custom_fg_color">لون الأيقونة</string>
+    <string name="icon_shape_title">شكل إطار الأيقونة</string>
+
+    <string name="app_customize_title">تخصيص التطبيق</string>
+    <string name="change_app_logo">تغيير شعار التطبيق (Logo)</string>
+    <string name="pick_logo_image">اختيار صورة من المعرض</string>
+    <string name="reset_default_logo">استعادة الشعار الأصلي</string>
+    <string name="symbol_library">أو اختر رمزاً جاهزاً</string>
+    <string name="rename_app_label">اسم التطبيق</string>
+    <string name="pin_on_page">إظهار في النافذة الحالية</string>
+    <string name="remove_from_page">إزالة من النافذة</string>
+    <string name="add_to_folder">إضافة إلى مجموعة</string>
+    <string name="open_app">فتح التطبيق</string>
+    <string name="app_info">معلومات التطبيق</string>
+
+    <!-- Folders -->
+    <string name="new_folder">مجموعة جديدة</string>
+    <string name="default_folder_name">مجموعة</string>
+    <string name="folder_empty_hint">اضغط لإضافة تطبيقات لهذه الخانة</string>
+    <string name="manage_apps">تعديل التطبيقات</string>
+    <string name="folder_name_label">اسم المجموعة</string>
+    <string name="delete_folder">حذف المجموعة</string>
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+
+    <!-- Widgets -->
+    <string name="charging_title">حالة الشحن والطاقة</string>
+    <string name="charging_active">جاري الشحن الآن</string>
+    <string name="charging_idle">وضع البطارية</string>
+    <string name="temp_label">الحرارة</string>
+    <string name="voltage_label">الجهد</string>
+    <string name="photo_widget_title">إطار الصور</string>
+    <string name="pick_photo">اختيار صورة</string>
+    <string name="frame_style_label">نمط الإطار</string>
+    <string name="photo_caption_label">عنوان الصورة</string>
+    <string name="media_widget_title">التحكم بالصوت والميديا</string>
+    <string name="media_subtitle">تشغيل سريع ومستوى الصوت</string>
+    <string name="media_volume">مستوى الصوت</string>
+    <string name="open_music_app">فتح مشغل الصوت</string>
+    <string name="system_pulse_title">أداء النظام واختصارات</string>
+    <string name="ram_label">الذاكرة RAM</string>
+    <string name="storage_label">التخزين</string>
+    <string name="wifi_shortcut">الواي فاي</string>
+    <string name="bluetooth_shortcut">البلوتوث</string>
+    <string name="display_shortcut">الشاشة</string>
+    <string name="set_home_shortcut">تعيين كلانشر</string>
+
+    <!-- Pages, Theme & Wallpaper -->
+    <string name="pages_manager_title">نوافذ الشاشة الرئيسية</string>
+    <string name="add_new_page">إضافة نافذة جديدة</string>
+    <string name="delete_page">حذف</string>
+    <string name="wallpaper_title">خلفية الشاشة</string>
+    <string name="theme_mode_title">وضع الإضاءة والمظهر</string>
+    <string name="theme_mode_system">تلقائي (الهاتف)</string>
+    <string name="theme_mode_light">نهاري</string>
+    <string name="theme_mode_dark">داكن / ليلي</string>
+    <string name="liquid_glass_title">ميزة الجلاسز (Liquid Glass)</string>
+    <string name="liquid_glass_desc">زجاج شفاف بأسلوب آيفون للإضافات، أسماء التطبيقات، الإعدادات والشريط</string>
+    <string name="liquid_glass_on">مفعّل</string>
+    <string name="liquid_glass_off">متوقف</string>
+    <string name="emblem_settings_title">تخصيص شعار N</string>
+    <string name="emblem_char_label">الحرف</string>
+    <string name="emblem_tagline_label">النص التعريفي</string>
+    <string name="launch_error">تعذر فتح هذا التطبيق</string>
+
+    <!-- Categories & Enums -->
+    <string name="cat_all">الكل</string>
+    <string name="cat_communication">التواصل</string>
+    <string name="cat_media">الوسائط</string>
+    <string name="cat_utilities">الأدوات</string>
+    <string name="cat_productivity">الإنتاجية</string>
+    <string name="cat_other">أخرى</string>
+
+    <string name="widget_emblem_name">ميزة الشعار</string>
+    <string name="widget_emblem_desc">شعار N بتصميم مميز مع نصك الخاص</string>
+    <string name="widget_charging_name">ميزة الشحن والبطارية</string>
+    <string name="widget_charging_desc">نسبة البطارية، سرعة الشحن، الحرارة والجهد</string>
+    <string name="widget_photo_name">ميزة إطار الصور</string>
+    <string name="widget_photo_desc">اعرض صورك المفضلة بإطارات متعددة</string>
+    <string name="widget_media_name">ميزة الميديا والصوت</string>
+    <string name="widget_media_desc">تحكم بالتشغيل ومستوى الصوت مباشرة</string>
+    <string name="widget_system_name">ميزة النظام والاختصارات</string>
+    <string name="widget_system_desc">الذاكرة والتخزين واختصارات الإعدادات</string>
+
+    <string name="icon_designs_section_title">تصميمات الأيقونات المميزة (لكل التطبيقات)</string>
+    <string name="icon_colors_section_title">باقات الألوان</string>
+    <string name="icon_theme_original">الألوان الأصلية</string>
+    <string name="icon_theme_spider_crimson">سبايدر قرمزي</string>
+    <string name="icon_theme_prism_glass">زجاج طيفي</string>
+    <string name="icon_theme_crimson_neon">نيون أحمر</string>
+    <string name="icon_theme_acid_slime">سلايم أخضر</string>
+    <string name="icon_theme_liquid_chrome">كروم فضي</string>
+    <string name="icon_theme_emerald_neon">نيون أخضر</string>
+    <string name="icon_theme_black_red">أسود وأحمر</string>
+    <string name="icon_theme_black_white">أسود وأبيض</string>
+    <string name="icon_theme_black_gold">أسود وذهبي</string>
+    <string name="icon_theme_cyber_blue">أزرق نيون</string>
+    <string name="icon_theme_custom">تخصيص حر</string>
+
+    <string name="shape_circle">دائري</string>
+    <string name="shape_squircle">مربع ناعم</string>
+    <string name="shape_rounded">حواف مربعة</string>
+
+    <string name="wp_pure_minimal">خلفية صافية</string>
+    <string name="wp_obsidian">موجات داكنة</string>
+    <string name="wp_sandstone">رمال دافئة</string>
+    <string name="wp_live_aurora">شفق متحرك</string>
+    <string name="wp_live_cyber_grid">تدفق نيون</string>
+    <string name="wp_live_liquid_flow">فقاعات سائلة</string>
+    <string name="wp_custom">صورة مخصصة</string>
+    <string name="wp_custom_video">خلفية فيديو</string>
+    <string name="wallpaper_animated_badge">متحركة</string>
+    <string name="pick_video_wallpaper">اختيار فيديو</string>
+
+    <string name="emblem_ribbon">بارز</string>
+    <string name="emblem_neon">حلقة مضيئة</string>
+    <string name="emblem_pill">ملون</string>
+
+    <string name="photo_bento">بطاقة</string>
+    <string name="photo_arch">قوس</string>
+    <string name="photo_polaroid">إطار فوري</string>
+
+    <string name="accent_coral">مرجاني</string>
+    <string name="accent_cobalt">أزرق</string>
+    <string name="accent_mint">نعناعي</string>
+    <string name="accent_amber">ذهبي</string>
+
+    <string name="source_ac">شاحن سريع AC</string>
+    <string name="source_usb">منفذ USB</string>
+    <string name="source_wireless">شحن لاسلكي</string>
+    <string name="source_battery">على البطارية</string>
+
+    <!-- Clock Styles & Home Edit Mode -->
+    <string name="clock_style_title">شكل الساعة</string>
+    <string name="clock_style_minimal">بسيط</string>
+    <string name="clock_style_tall_glass">زجاج طويلة</string>
+    <string name="clock_style_bubbly_glass">زجاج منتفخة</string>
+    <string name="edit_layout_done">تم</string>
+    <string name="edit_layout_hint">اسحب الأيقونات لتحريكها أو اضغط × للإزالة</string>
+    <string name="move_prev">تقديم</string>
+    <string name="move_next">تأخير</string>
+    <string name="move_page">نقل لنافذة</string>
+    <string name="uninstall_app">حذف التطبيق</string>
+    <string name="customize_app_short">الشعار</string>
+    <string name="remove_from_home">إزالة</string>
+    <string name="edit_home_apps_action">تحريك وترتيب التطبيقات</string>
+
+    <!-- Max Pages & Icon Size -->
+    <string name="max_pages_reached">الحد الأقصى هو %1$d نافذة</string>
+    <string name="pages_limit_hint">حتى %1$d نافذة</string>
+    <string name="icon_size_title">حجم الأيقونات</string>
+    <string name="icon_size_small">صغير</string>
+    <string name="icon_size_medium">متوسط</string>
+    <string name="icon_size_large">كبير</string>
+    <string name="icon_size_xl">كبير جداً</string>
+
+    <!-- Built-in Themes App & Quick Edit Actions -->
+    <string name="themes_app_label">الثيمات</string>
+    <string name="edit_add_quick">إضافة</string>
+    <string name="edit_themes_quick">الثيمات</string>
+</resources>

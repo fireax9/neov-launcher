@@ -1,0 +1,211 @@
+<resources>
+    <string name="app_name">N Launcher</string>
+    <string name="default_tagline">Personal N Emblem</string>
+    <string name="default_photo_caption">Photo Frame</string>
+    <string name="search_placeholder">Search any app…</string>
+    <string name="all_apps_title">All Applications</string>
+    <string name="apps_count_label">%1$d apps</string>
+    <string name="no_apps_found">No matching apps found</string>
+    <string name="clear_search">Clear search</string>
+    <string name="open_drawer_cd">Open app drawer via N button</string>
+    <string name="close_cd">Close</string>
+
+    <!-- Default Launcher Gate -->
+    <string name="gate_badge">System Home Launcher</string>
+    <string name="gate_title">Set N Launcher as your phone\'s main UI</string>
+    <string name="gate_subtitle">To transform your home screen, enable the floating N button, and customize app icon colors and pages, set N Launcher as your default Home app.</string>
+    <string name="gate_step_1">Replace your home screen UI completely</string>
+    <string name="gate_step_2">Floating N app drawer and instant search</string>
+    <string name="gate_step_3">Recolor all app icons and customize logos</string>
+    <string name="gate_cta_primary">Set as Default Launcher</string>
+    <string name="gate_cta_secondary">Continue to preview</string>
+
+    <!-- Home & Pages -->
+    <string name="long_press_hint">Long-press empty space to move apps • Tap Themes to customize</string>
+    <string name="empty_page_title">Clean page ready for you</string>
+    <string name="empty_page_subtitle">Tap here to add apps &amp; widgets, or long-press to arrange icons</string>
+    <string name="add_to_this_page">Add to this page</string>
+    <string name="page_main_label">Home</string>
+    <string name="page_numbered_label">Page %1$d</string>
+
+    <!-- Long-Press Visual Hub -->
+    <string name="hub_title">Customize Page</string>
+    <string name="hub_subtitle">Tap any option to add or style</string>
+    <string name="tab_add_apps">Apps</string>
+    <string name="tab_add_widgets">Features</string>
+    <string name="tab_icon_colors">Colors</string>
+    <string name="tab_pages_look">Pages</string>
+
+    <string name="add_folder_card">Create App Group</string>
+    <string name="add_folder_desc">Place multiple apps inside one neat card</string>
+    <string name="pin_apps_title">Choose apps shown on this page</string>
+    <string name="widgets_picker_title">Choose features to add here</string>
+    <string name="added_badge">Added</string>
+    <string name="add_badge">Add</string>
+    <string name="remove_badge">Remove</string>
+
+    <!-- Icon Colors & Custom App Logo -->
+    <string name="icon_pack_title">Global App Icon Colors</string>
+    <string name="icon_pack_desc">Transform every app icon color at once (e.g. Black &amp; Red)</string>
+    <string name="custom_bg_color">Background Color</string>
+    <string name="custom_fg_color">Icon Color</string>
+    <string name="icon_shape_title">Icon Frame Shape</string>
+
+    <string name="app_customize_title">Customize App</string>
+    <string name="change_app_logo">Change App Logo</string>
+    <string name="pick_logo_image">Pick from Gallery</string>
+    <string name="reset_default_logo">Reset to Default</string>
+    <string name="symbol_library">Or choose a built-in symbol</string>
+    <string name="rename_app_label">App Name</string>
+    <string name="pin_on_page">Show on current page</string>
+    <string name="remove_from_page">Remove from page</string>
+    <string name="add_to_folder">Add to group</string>
+    <string name="open_app">Open App</string>
+    <string name="app_info">App Info</string>
+
+    <!-- Folders -->
+    <string name="new_folder">New Group</string>
+    <string name="default_folder_name">Group</string>
+    <string name="folder_empty_hint">Tap to add apps to this group</string>
+    <string name="manage_apps">Manage Apps</string>
+    <string name="folder_name_label">Group Name</string>
+    <string name="delete_folder">Delete Group</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Widgets -->
+    <string name="charging_title">Charging &amp; Power</string>
+    <string name="charging_active">Charging now</string>
+    <string name="charging_idle">On battery</string>
+    <string name="temp_label">Temp</string>
+    <string name="voltage_label">Voltage</string>
+    <string name="photo_widget_title">Photo Frame</string>
+    <string name="pick_photo">Choose Photo</string>
+    <string name="frame_style_label">Frame Style</string>
+    <string name="photo_caption_label">Caption</string>
+    <string name="media_widget_title">Media &amp; Audio</string>
+    <string name="media_subtitle">Quick playback &amp; volume</string>
+    <string name="media_volume">Media Volume</string>
+    <string name="open_music_app">Open Music App</string>
+    <string name="system_pulse_title">System Pulse &amp; Shortcuts</string>
+    <string name="ram_label">RAM</string>
+    <string name="storage_label">Storage</string>
+    <string name="wifi_shortcut">Wi-Fi</string>
+    <string name="bluetooth_shortcut">Bluetooth</string>
+    <string name="display_shortcut">Display</string>
+    <string name="set_home_shortcut">Default Home</string>
+
+    <!-- Pages, Theme & Wallpaper -->
+    <string name="pages_manager_title">Home Pages</string>
+    <string name="add_new_page">Add New Page</string>
+    <string name="delete_page">Delete</string>
+    <string name="wallpaper_title">Wallpaper</string>
+    <string name="theme_mode_title">Appearance Mode</string>
+    <string name="theme_mode_system">Auto (Phone)</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="liquid_glass_title">iOS Liquid Glass</string>
+    <string name="liquid_glass_desc">Translucent frosted glass on widgets, app names, settings &amp; dock</string>
+    <string name="liquid_glass_on">Enabled</string>
+    <string name="liquid_glass_off">Off</string>
+    <string name="emblem_settings_title">Customize N Emblem</string>
+    <string name="emblem_char_label">Letter</string>
+    <string name="emblem_tagline_label">Tagline</string>
+    <string name="launch_error">Could not launch this app</string>
+
+    <!-- Categories & Enums -->
+    <string name="cat_all">All</string>
+    <string name="cat_communication">Social</string>
+    <string name="cat_media">Media</string>
+    <string name="cat_utilities">Tools</string>
+    <string name="cat_productivity">Work</string>
+    <string name="cat_other">Other</string>
+
+    <string name="widget_emblem_name">Emblem Feature</string>
+    <string name="widget_emblem_desc">Stylized N logo with your custom tagline</string>
+    <string name="widget_charging_name">Charging &amp; Battery</string>
+    <string name="widget_charging_desc">Live battery percentage, speed, temp &amp; voltage</string>
+    <string name="widget_photo_name">Photo Frame</string>
+    <string name="widget_photo_desc">Display your favorite photos in custom frames</string>
+    <string name="widget_media_name">Media &amp; Audio</string>
+    <string name="widget_media_desc">Playback controls and media volume slider</string>
+    <string name="widget_system_name">System &amp; Shortcuts</string>
+    <string name="widget_system_desc">RAM, storage, and quick system toggles</string>
+
+    <string name="icon_designs_section_title">Featured Icon Designs (All Apps)</string>
+    <string name="icon_colors_section_title">Color Packs</string>
+    <string name="icon_theme_original">Original Colors</string>
+    <string name="icon_theme_spider_crimson">Spider Crimson</string>
+    <string name="icon_theme_prism_glass">Prism Glass</string>
+    <string name="icon_theme_crimson_neon">Crimson Neon</string>
+    <string name="icon_theme_acid_slime">Acid Slime</string>
+    <string name="icon_theme_liquid_chrome">Liquid Chrome</string>
+    <string name="icon_theme_emerald_neon">Emerald Neon</string>
+    <string name="icon_theme_black_red">Black &amp; Red</string>
+    <string name="icon_theme_black_white">Black &amp; White</string>
+    <string name="icon_theme_black_gold">Black &amp; Gold</string>
+    <string name="icon_theme_cyber_blue">Cyber Blue</string>
+    <string name="icon_theme_custom">Custom Colors</string>
+
+    <string name="shape_circle">Circle</string>
+    <string name="shape_squircle">Squircle</string>
+    <string name="shape_rounded">Rounded</string>
+
+    <string name="wp_pure_minimal">Clean Blank</string>
+    <string name="wp_obsidian">Obsidian Waves</string>
+    <string name="wp_sandstone">Warm Sandstone</string>
+    <string name="wp_live_aurora">Aurora Motion</string>
+    <string name="wp_live_cyber_grid">Neon Flow</string>
+    <string name="wp_live_liquid_flow">Liquid Orbs</string>
+    <string name="wp_custom">Custom Photo</string>
+    <string name="wp_custom_video">Video Wallpaper</string>
+    <string name="wallpaper_animated_badge">Live</string>
+    <string name="pick_video_wallpaper">Choose Video</string>
+
+    <string name="emblem_ribbon">Sculpted</string>
+    <string name="emblem_neon">Halo Ring</string>
+    <string name="emblem_pill">Colored</string>
+
+    <string name="photo_bento">Card</string>
+    <string name="photo_arch">Arch</string>
+    <string name="photo_polaroid">Instant</string>
+
+    <string name="accent_coral">Coral</string>
+    <string name="accent_cobalt">Cobalt</string>
+    <string name="accent_mint">Mint</string>
+    <string name="accent_amber">Gold</string>
+
+    <string name="source_ac">AC Fast Charge</string>
+    <string name="source_usb">USB Power</string>
+    <string name="source_wireless">Wireless</string>
+    <string name="source_battery">On Battery</string>
+
+    <!-- Clock Styles & Home Edit Mode -->
+    <string name="clock_style_title">Clock Style</string>
+    <string name="clock_style_minimal">Clean</string>
+    <string name="clock_style_tall_glass">Tall Glass</string>
+    <string name="clock_style_bubbly_glass">Bubbly Glass</string>
+    <string name="edit_layout_done">Done</string>
+    <string name="edit_layout_hint">Drag icons to move or tap × to remove</string>
+    <string name="move_prev">Prev</string>
+    <string name="move_next">Next</string>
+    <string name="move_page">Move Page</string>
+    <string name="uninstall_app">Uninstall</string>
+    <string name="customize_app_short">Logo</string>
+    <string name="remove_from_home">Remove</string>
+    <string name="edit_home_apps_action">Arrange &amp; Move Apps</string>
+
+    <!-- Max Pages & Icon Size -->
+    <string name="max_pages_reached">Maximum of %1$d pages reached</string>
+    <string name="pages_limit_hint">Up to %1$d pages</string>
+    <string name="icon_size_title">Icon Size</string>
+    <string name="icon_size_small">Small</string>
+    <string name="icon_size_medium">Medium</string>
+    <string name="icon_size_large">Large</string>
+    <string name="icon_size_xl">XL</string>
+
+    <!-- Built-in Themes App & Quick Edit Actions -->
+    <string name="themes_app_label">Themes</string>
+    <string name="edit_add_quick">Add</string>
+    <string name="edit_themes_quick">Themes</string>
+</resources>

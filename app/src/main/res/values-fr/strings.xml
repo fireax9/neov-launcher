@@ -1,0 +1,211 @@
+<resources>
+    <string name="app_name">N Launcher</string>
+    <string name="default_tagline">Emblème N personnel</string>
+    <string name="default_photo_caption">Cadre Photo</string>
+    <string name="search_placeholder">Rechercher une application…</string>
+    <string name="all_apps_title">Toutes les applications</string>
+    <string name="apps_count_label">%1$d apps</string>
+    <string name="no_apps_found">Aucune application trouvée</string>
+    <string name="clear_search">Effacer</string>
+    <string name="open_drawer_cd">Ouvrir les applications via N</string>
+    <string name="close_cd">Fermer</string>
+
+    <!-- Default Launcher Gate -->
+    <string name="gate_badge">Lanceur système principal</string>
+    <string name="gate_title">Définissez N Launcher comme accueil principal</string>
+    <string name="gate_subtitle">Pour transformer votre écran d\'accueil, activer le bouton flottant N et personnaliser les icônes et pages, définissez l\'app comme lanceur par défaut.</string>
+    <string name="gate_step_1">Remplacer entièrement l\'interface d\'accueil</string>
+    <string name="gate_step_2">Bouton flottant N et recherche instantanée</string>
+    <string name="gate_step_3">Recolorer toutes les icônes et logos</string>
+    <string name="gate_cta_primary">Définir par défaut</string>
+    <string name="gate_cta_secondary">Continuer vers l\'aperçu</string>
+
+    <!-- Home & Pages -->
+    <string name="long_press_hint">Appui long sur un espace vide pour déplacer • Touchez Thèmes pour modifier</string>
+    <string name="empty_page_title">Page vierge prête pour vous</string>
+    <string name="empty_page_subtitle">Touchez ici pour ajouter apps et widgets, ou appui long pour déplacer</string>
+    <string name="add_to_this_page">Ajouter à cette page</string>
+    <string name="page_main_label">Accueil</string>
+    <string name="page_numbered_label">Page %1$d</string>
+
+    <!-- Long-Press Visual Hub -->
+    <string name="hub_title">Personnaliser la page</string>
+    <string name="hub_subtitle">Touchez pour ajouter ou modifier</string>
+    <string name="tab_add_apps">Apps</string>
+    <string name="tab_add_widgets">Fonctions</string>
+    <string name="tab_icon_colors">Couleurs</string>
+    <string name="tab_pages_look">Pages</string>
+
+    <string name="add_folder_card">Créer un groupe d\'apps</string>
+    <string name="add_folder_desc">Regroupez plusieurs applications dans une carte</string>
+    <string name="pin_apps_title">Choisir les apps affichées sur cette page</string>
+    <string name="widgets_picker_title">Choisir les fonctions à ajouter ici</string>
+    <string name="added_badge">Ajouté</string>
+    <string name="add_badge">Ajouter</string>
+    <string name="remove_badge">Retirer</string>
+
+    <!-- Icon Colors & Custom App Logo -->
+    <string name="icon_pack_title">Couleur globale des icônes</string>
+    <string name="icon_pack_desc">Changez la couleur de toutes les apps (ex. Noir &amp; Rouge)</string>
+    <string name="custom_bg_color">Couleur de fond</string>
+    <string name="custom_fg_color">Couleur d\'icône</string>
+    <string name="icon_shape_title">Forme des icônes</string>
+
+    <string name="app_customize_title">Personnaliser l\'app</string>
+    <string name="change_app_logo">Changer le logo de l\'app</string>
+    <string name="pick_logo_image">Depuis la galerie</string>
+    <string name="reset_default_logo">Logo par défaut</string>
+    <string name="symbol_library">Ou choisir un symbole</string>
+    <string name="rename_app_label">Nom de l\'app</string>
+    <string name="pin_on_page">Afficher sur cette page</string>
+    <string name="remove_from_page">Retirer de la page</string>
+    <string name="add_to_folder">Ajouter au groupe</string>
+    <string name="open_app">Ouvrir</string>
+    <string name="app_info">Infos de l\'app</string>
+
+    <!-- Folders -->
+    <string name="new_folder">Nouveau groupe</string>
+    <string name="default_folder_name">Groupe</string>
+    <string name="folder_empty_hint">Appuyez pour ajouter des apps</string>
+    <string name="manage_apps">Gérer les apps</string>
+    <string name="folder_name_label">Nom du groupe</string>
+    <string name="delete_folder">Supprimer le groupe</string>
+    <string name="save">Enregistrer</string>
+    <string name="cancel">Annuler</string>
+
+    <!-- Widgets -->
+    <string name="charging_title">Charge &amp; Batterie</string>
+    <string name="charging_active">En charge</string>
+    <string name="charging_idle">Sur batterie</string>
+    <string name="temp_label">Temp.</string>
+    <string name="voltage_label">Tension</string>
+    <string name="photo_widget_title">Cadre Photo</string>
+    <string name="pick_photo">Choisir une photo</string>
+    <string name="frame_style_label">Style de cadre</string>
+    <string name="photo_caption_label">Légende</string>
+    <string name="media_widget_title">Média &amp; Audio</string>
+    <string name="media_subtitle">Contrôle rapide &amp; volume</string>
+    <string name="media_volume">Volume média</string>
+    <string name="open_music_app">Ouvrir l\'audio</string>
+    <string name="system_pulse_title">Système &amp; Raccourcis</string>
+    <string name="ram_label">RAM</string>
+    <string name="storage_label">Stockage</string>
+    <string name="wifi_shortcut">Wi-Fi</string>
+    <string name="bluetooth_shortcut">Bluetooth</string>
+    <string name="display_shortcut">Affichage</string>
+    <string name="set_home_shortcut">Accueil</string>
+
+    <!-- Pages, Theme & Wallpaper -->
+    <string name="pages_manager_title">Pages d\'accueil</string>
+    <string name="add_new_page">Nouvelle page</string>
+    <string name="delete_page">Supprimer</string>
+    <string name="wallpaper_title">Fond d\'écran</string>
+    <string name="theme_mode_title">Mode d\'apparence</string>
+    <string name="theme_mode_system">Auto (Téléphone)</string>
+    <string name="theme_mode_light">Clair</string>
+    <string name="theme_mode_dark">Sombre</string>
+    <string name="liquid_glass_title">Effet Liquid Glass (iOS)</string>
+    <string name="liquid_glass_desc">Verre dépoli translucide sur widgets, noms d\'apps, réglages et dock</string>
+    <string name="liquid_glass_on">Activé</string>
+    <string name="liquid_glass_off">Désactivé</string>
+    <string name="emblem_settings_title">Logo N</string>
+    <string name="emblem_char_label">Lettre</string>
+    <string name="emblem_tagline_label">Sous-titre</string>
+    <string name="launch_error">Impossible d\'ouvrir cette app</string>
+
+    <!-- Categories & Enums -->
+    <string name="cat_all">Tout</string>
+    <string name="cat_communication">Social</string>
+    <string name="cat_media">Média</string>
+    <string name="cat_utilities">Outils</string>
+    <string name="cat_productivity">Travail</string>
+    <string name="cat_other">Autres</string>
+
+    <string name="widget_emblem_name">Logo N</string>
+    <string name="widget_emblem_desc">Logo N stylisé avec votre texte</string>
+    <string name="widget_charging_name">Charge &amp; Batterie</string>
+    <string name="widget_charging_desc">Niveau, vitesse de charge, température</string>
+    <string name="widget_photo_name">Cadre Photo</string>
+    <string name="widget_photo_desc">Affichez vos photos favorites</string>
+    <string name="widget_media_name">Média &amp; Audio</string>
+    <string name="widget_media_desc">Commandes de lecture et volume</string>
+    <string name="widget_system_name">Système &amp; Raccourcis</string>
+    <string name="widget_system_desc">RAM, stockage et réglages rapides</string>
+
+    <string name="icon_designs_section_title">Designs d\'icônes (Toutes les apps)</string>
+    <string name="icon_colors_section_title">Packs de couleurs</string>
+    <string name="icon_theme_original">Couleurs d\'origine</string>
+    <string name="icon_theme_spider_crimson">Spider Cramoisi</string>
+    <string name="icon_theme_prism_glass">Verre Prisme</string>
+    <string name="icon_theme_crimson_neon">Néon Rouge</string>
+    <string name="icon_theme_acid_slime">Slime Acide</string>
+    <string name="icon_theme_liquid_chrome">Chrome Argent</string>
+    <string name="icon_theme_emerald_neon">Néon Émeraude</string>
+    <string name="icon_theme_black_red">Noir &amp; Rouge</string>
+    <string name="icon_theme_black_white">Noir &amp; Blanc</string>
+    <string name="icon_theme_black_gold">Noir &amp; Or</string>
+    <string name="icon_theme_cyber_blue">Bleu Néon</string>
+    <string name="icon_theme_custom">Personnalisé</string>
+
+    <string name="shape_circle">Cercle</string>
+    <string name="shape_squircle">Squircle</string>
+    <string name="shape_rounded">Arrondi</string>
+
+    <string name="wp_pure_minimal">Épuré</string>
+    <string name="wp_obsidian">Ondes sombres</string>
+    <string name="wp_sandstone">Grès clair</string>
+    <string name="wp_live_aurora">Aurore animée</string>
+    <string name="wp_live_cyber_grid">Flux néon</string>
+    <string name="wp_live_liquid_flow">Bulles fluides</string>
+    <string name="wp_custom">Photo perso</string>
+    <string name="wp_custom_video">Vidéo perso</string>
+    <string name="wallpaper_animated_badge">Animé</string>
+    <string name="pick_video_wallpaper">Choisir une vidéo</string>
+
+    <string name="emblem_ribbon">Sculpté</string>
+    <string name="emblem_neon">Anneau</string>
+    <string name="emblem_pill">Coloré</string>
+
+    <string name="photo_bento">Carte</string>
+    <string name="photo_arch">Arche</string>
+    <string name="photo_polaroid">Instantané</string>
+
+    <string name="accent_coral">Corail</string>
+    <string name="accent_cobalt">Cobalt</string>
+    <string name="accent_mint">Menthe</string>
+    <string name="accent_amber">Or</string>
+
+    <string name="source_ac">Secteur AC</string>
+    <string name="source_usb">USB</string>
+    <string name="source_wireless">Sans fil</string>
+    <string name="source_battery">Batterie</string>
+
+    <!-- Clock Styles & Home Edit Mode -->
+    <string name="clock_style_title">Style d\'horloge</string>
+    <string name="clock_style_minimal">Épurée</string>
+    <string name="clock_style_tall_glass">Verre haute</string>
+    <string name="clock_style_bubbly_glass">Verre arrondie</string>
+    <string name="edit_layout_done">Terminé</string>
+    <string name="edit_layout_hint">Glissez pour déplacer ou touchez ×</string>
+    <string name="move_prev">Préc.</string>
+    <string name="move_next">Suiv.</string>
+    <string name="move_page">Changer page</string>
+    <string name="uninstall_app">Désinstaller</string>
+    <string name="customize_app_short">Logo</string>
+    <string name="remove_from_home">Retirer</string>
+    <string name="edit_home_apps_action">Déplacer les apps</string>
+
+    <!-- Max Pages & Icon Size -->
+    <string name="max_pages_reached">Maximum de %1$d pages atteint</string>
+    <string name="pages_limit_hint">Jusqu\'à %1$d pages</string>
+    <string name="icon_size_title">Taille des icônes</string>
+    <string name="icon_size_small">Petit</string>
+    <string name="icon_size_medium">Moyen</string>
+    <string name="icon_size_large">Grand</string>
+    <string name="icon_size_xl">Très grand</string>
+
+    <!-- Built-in Themes App & Quick Edit Actions -->
+    <string name="themes_app_label">Thèmes</string>
+    <string name="edit_add_quick">Ajouter</string>
+    <string name="edit_themes_quick">Thèmes</string>
+</resources>

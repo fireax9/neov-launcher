@@ -1,0 +1,6 @@
+{
+  "name": "N Launcher",
+  "description": "A sleek, customizable Android UI launcher featuring a floating bottom N-button app drawer, instant app search, smart app folders, live charging telemetry, photo frame widget, and device utility cards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
