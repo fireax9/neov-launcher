@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.example.R
 import com.example.model.AppCategory
 import com.example.model.InstalledApp
+import com.example.model.PC_APP_PACKAGE
 import com.example.model.THEMES_APP_PACKAGE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -119,7 +120,7 @@ class InstalledAppsRepository(private val context: Context) {
             .sortedBy { it.label.lowercase() }
             .toList()
 
-        return listOf(createBuiltInThemesApp()) + systemApps
+        return listOf(createBuiltInThemesApp(), createBuiltInPcApp()) + systemApps
     }
 
     private fun createBuiltInThemesApp(): InstalledApp {
@@ -217,6 +218,96 @@ class InstalledAppsRepository(private val context: Context) {
             close()
         }
         canvas.drawPath(starPath, strokePaint)
+
+        return bitmap.asImageBitmap()
+    }
+
+    private fun createBuiltInPcApp(): InstalledApp {
+        val fullIcon = renderPcAppBitmap(includeBackground = true, sizePx = ICON_RENDER_PX)
+        val fgIcon = renderPcAppBitmap(includeBackground = false, sizePx = ICON_RENDER_PX)
+        return InstalledApp(
+            packageName = PC_APP_PACKAGE,
+            activityName = "",
+            label = context.getString(R.string.pc_app_label),
+            category = AppCategory.UTILITIES,
+            isSystemApp = true,
+            icon = fullIcon,
+            foregroundIcon = fgIcon,
+            isInternalApp = true
+        )
+    }
+
+    private fun renderPcAppBitmap(includeBackground: Boolean, sizePx: Int): ImageBitmap {
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val s = sizePx.toFloat()
+
+        if (includeBackground) {
+            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(
+                    0f, 0f, s, s,
+                    intArrayOf(
+                        Color.rgb(9, 25, 58),
+                        Color.rgb(0, 103, 192),
+                        Color.rgb(56, 189, 248)
+                    ),
+                    floatArrayOf(0f, 0.55f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawRect(0f, 0f, s, s, bgPaint)
+        }
+
+        // Sleek PC monitor outline + Windows 11 4-pane logo inside
+        val monitorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = s * 0.055f
+            color = Color.WHITE
+        }
+        val monitorRect = RectF(s * 0.17f, s * 0.21f, s * 0.83f, s * 0.69f)
+        canvas.drawRoundRect(monitorRect, s * 0.08f, s * 0.08f, monitorPaint)
+
+        // Monitor stand
+        val standPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = s * 0.055f
+            strokeCap = Paint.Cap.ROUND
+            color = Color.WHITE
+        }
+        canvas.drawLine(s * 0.50f, s * 0.69f, s * 0.50f, s * 0.79f, standPaint)
+        canvas.drawLine(s * 0.34f, s * 0.81f, s * 0.66f, s * 0.81f, standPaint)
+
+        // 4 Windows 11 panes inside the monitor
+        val panePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+        val paneGap = s * 0.032f
+        val paneSize = s * 0.125f
+        val px = (s - (paneSize * 2 + paneGap)) / 2f
+        val py = (s * 0.21f + s * 0.69f - (paneSize * 2 + paneGap)) / 2f
+        val paneColors = if (includeBackground) {
+            intArrayOf(
+                Color.rgb(125, 224, 255),
+                Color.rgb(80, 195, 255),
+                Color.rgb(58, 168, 250),
+                Color.rgb(34, 140, 238)
+            )
+        } else {
+            intArrayOf(
+                Color.WHITE,
+                Color.argb(225, 255, 255, 255),
+                Color.argb(210, 255, 255, 255),
+                Color.argb(240, 255, 255, 255)
+            )
+        }
+        panePaint.color = paneColors[0]
+        canvas.drawRoundRect(RectF(px, py, px + paneSize, py + paneSize), s * 0.02f, s * 0.02f, panePaint)
+        panePaint.color = paneColors[1]
+        canvas.drawRoundRect(RectF(px + paneSize + paneGap, py, px + paneSize * 2 + paneGap, py + paneSize), s * 0.02f, s * 0.02f, panePaint)
+        panePaint.color = paneColors[2]
+        canvas.drawRoundRect(RectF(px, py + paneSize + paneGap, px + paneSize, py + paneSize * 2 + paneGap), s * 0.02f, s * 0.02f, panePaint)
+        panePaint.color = paneColors[3]
+        canvas.drawRoundRect(RectF(px + paneSize + paneGap, py + paneSize + paneGap, px + paneSize * 2 + paneGap, py + paneSize * 2 + paneGap), s * 0.02f, s * 0.02f, panePaint)
 
         return bitmap.asImageBitmap()
     }
@@ -333,22 +424,84 @@ class InstalledAppsRepository(private val context: Context) {
         return src.asImageBitmap()
     }
 
-    fun launchApp(packageName: String, activityName: String? = null): Boolean {
+    fun launchApp(
+        packageName: String,
+        activityName: String? = null,
+        launchContext: Context? = null
+    ): Boolean {
         return runCatching {
-            val intent = if (!activityName.isNullOrBlank()) {
-                Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    component = ComponentName(packageName, activityName)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                }
-            } else {
-                context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            } ?: return false
-            context.startActivity(intent)
+            val caller = launchContext ?: context
+            val intent = buildLaunchIntent(packageName, activityName, attachNewTask = caller !is android.app.Activity)
+                ?: return false
+            caller.startActivity(intent)
             true
-        }.getOrDefault(false)
+        }.getOrElse {
+            // Fallback to explicit component if default launch intent failed
+            if (!activityName.isNullOrBlank()) {
+                runCatching {
+                    val caller = launchContext ?: context
+                    val explicit = Intent.makeMainActivity(ComponentName(packageName, activityName)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                    }
+                    caller.startActivity(explicit)
+                    true
+                }.getOrDefault(false)
+            } else {
+                false
+            }
+        }
+    }
+
+    fun launchAppInPcWindowMode(packageName: String, activityName: String? = null): Boolean {
+        return runCatching {
+            val intent = buildLaunchIntent(packageName, activityName, attachNewTask = true) ?: return false
+            val dm = context.resources.displayMetrics
+            val w = maxOf(dm.widthPixels, dm.heightPixels)
+            val h = minOf(dm.widthPixels, dm.heightPixels)
+            val left = (w * 0.14f).toInt()
+            val top = (h * 0.08f).toInt()
+            val right = (w * 0.86f).toInt()
+            val bottom = (h * 0.86f).toInt()
+            val opts = android.app.ActivityOptions.makeBasic()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                opts.launchBounds = android.graphics.Rect(left, top, right, bottom)
+            }
+            // Also request WINDOWING_MODE_FREEFORM (5) reflectively when supported by OEM desktop/multi-window
+            runCatching {
+                val method = opts.javaClass.getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType)
+                method.invoke(opts, 5)
+            }
+            context.startActivity(intent, opts.toBundle())
+            true
+        }.getOrElse {
+            launchApp(packageName, activityName)
+        }
+    }
+
+    private fun buildLaunchIntent(
+        packageName: String,
+        activityName: String?,
+        attachNewTask: Boolean = true
+    ): Intent? {
+        val pmIntent = runCatching { context.packageManager.getLaunchIntentForPackage(packageName) }.getOrNull()
+        val chosen = pmIntent ?: if (!activityName.isNullOrBlank()) {
+            Intent.makeMainActivity(ComponentName(packageName, activityName))
+        } else {
+            null
+        }
+        return chosen?.apply {
+            if (attachNewTask) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            } else {
+                addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            }
+        }
+    }
+
+    fun isCalculatorApp(packageName: String, label: String): Boolean {
+        val key = "${packageName.lowercase()} ${label.lowercase()}"
+        return listOf("calculator", "calculator2", "calc", "حاسبة", "الحاسبة", "calculatrice", "rechner")
+            .any { key.contains(it) }
     }
 
     fun openAppInfo(packageName: String): Boolean {
@@ -424,6 +577,61 @@ class InstalledAppsRepository(private val context: Context) {
             }
         }
         return Intent(Settings.ACTION_HOME_SETTINGS)
+    }
+
+    fun isGameApp(packageName: String, label: String): Boolean {
+        if (packageName.startsWith("com.nlauncher.internal.")) return false
+        val appInfo = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0L))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getApplicationInfo(packageName, 0)
+            }
+        }.getOrNull()
+        if (appInfo != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appInfo.category == ApplicationInfo.CATEGORY_GAME) {
+                return true
+            }
+            @Suppress("DEPRECATION")
+            if ((appInfo.flags and ApplicationInfo.FLAG_IS_GAME) != 0) {
+                return true
+            }
+        }
+        val key = "${packageName.lowercase()} ${label.lowercase()}"
+        return listOf(
+            "game", "pubg", "minecraft", "roblox", "freefire", "cod", "callofduty",
+            "genshin", "fortnite", "asphalt", "brawl", "clash", "mobilelegends",
+            "steam", "epicgames", "winlator", "ppsspp", "dolphin", "aethersx", "chess", "play.games"
+        ).any { key.contains(it) }
+    }
+
+    fun findInstalledWineBridgeApps(): List<String> {
+        val candidates = listOf(
+            "com.winlator",
+            "com.winlator.debug",
+            "org.winehq.wine",
+            "com.eltechs.ed",
+            "com.micewine.emu",
+            "com.xiaoji.emulator"
+        )
+        return candidates.filter { pkg ->
+            runCatching {
+                context.packageManager.getLaunchIntentForPackage(pkg) != null
+            }.getOrDefault(false)
+        }
+    }
+
+    fun launchExeUriExternal(uriString: String): Boolean {
+        return runCatching {
+            val uri = Uri.parse(uriString)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/x-msdownload")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(intent)
+            true
+        }.getOrDefault(false)
     }
 
     companion object {

@@ -667,6 +667,8 @@ fun AppIconTile(
     iconColorTheme: IconColorTheme,
     customBgHex: Long,
     customFgHex: Long,
+    customBgEndHex: Long = 0xFF2B0F1CL,
+    isIconGradientEnabled: Boolean = true,
     override: CustomAppOverride? = null,
     isLiquidGlass: Boolean = true,
     iconSize: Dp = 56.dp,
@@ -707,11 +709,17 @@ fun AppIconTile(
         customFgHex = customFgHex
     )
 
+    val useGradientBg = iconColorTheme == IconColorTheme.CUSTOM_DUOTONE && isIconGradientEnabled
     val tileBackgroundColor = when {
         iconColorTheme == IconColorTheme.PRISM_GLASS -> Color(0xFF0A101E).copy(alpha = 0.86f)
         isThemed -> themeBg
         isLiquidGlass -> if (isDark) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.65f)
         else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+    }
+    val tileBackgroundBrush = if (useGradientBg) {
+        Brush.linearGradient(listOf(Color(customBgHex), Color(customBgEndHex)))
+    } else {
+        Brush.linearGradient(listOf(tileBackgroundColor, tileBackgroundColor))
     }
     val tileBorderColor = when {
         iconColorTheme == IconColorTheme.PRISM_GLASS -> Color.Transparent
@@ -754,7 +762,7 @@ fun AppIconTile(
                     spotColor = if (isThemed) themeFg.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.28f)
                 )
                 .clip(shape)
-                .background(tileBackgroundColor)
+                .background(tileBackgroundBrush)
                 .border(
                     width = if (isThemed || isLiquidGlass) 1.2.dp else 0.75.dp,
                     color = tileBorderColor,

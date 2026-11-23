@@ -49,6 +49,16 @@ const val MIN_ICON_SIZE_DP = 44
 const val DEFAULT_ICON_SIZE_DP = 58
 const val MAX_ICON_SIZE_DP = 78
 const val THEMES_APP_PACKAGE = "com.nlauncher.internal.themes"
+const val PC_APP_PACKAGE = "com.nlauncher.internal.pc"
+const val RETURN_LAUNCHER_PACKAGE = "com.nlauncher.internal.return_launcher"
+
+data class PcExeShortcut(
+    val id: String,
+    val name: String,
+    val uriString: String,
+    val sizeBytes: Long = 0L,
+    val addedAtMillis: Long = 0L
+)
 
 enum class WallpaperChoice {
     PURE_MINIMAL,
@@ -162,7 +172,17 @@ enum class ThemeMode {
 enum class ClockStyle {
     MINIMAL_CLEAN,
     TALL_CONDENSED_GLASS,
-    BUBBLY_OVERLAP_GLASS
+    BUBBLY_OVERLAP_GLASS,
+    IOS_DEPTH_SERIF,
+    NOTHING_DOT_MATRIX,
+    ANDROID_MATERIAL_PILL,
+    ONE_UI_KINETIC,
+    RETRO_SPLIT_FLAP,
+    NEON_CYBER_GLOW,
+    SWISS_MONO_GRID,
+    EDITORIAL_SPLIT_CARD,
+    LIFE_PROGRESS_HUD,
+    AMBIENT_ANALOG_HYBRID
 }
 
 data class LauncherConfig(
@@ -170,6 +190,10 @@ data class LauncherConfig(
     val isLiquidGlassEnabled: Boolean = true,
     val clockStyle: ClockStyle = ClockStyle.MINIMAL_CLEAN,
     val accent: LauncherAccent = LauncherAccent.CORAL,
+    val useCustomAccent: Boolean = false,
+    val customAccentHex: Long = 0xFFFF4D2DL,
+    val customAccentEndHex: Long = 0xFFFF9A44L,
+    val isAccentGradientEnabled: Boolean = true,
     val wallpaper: WallpaperChoice = WallpaperChoice.PURE_MINIMAL,
     val customWallpaperPath: String? = null,
     val customVideoWallpaperPath: String? = null,
@@ -177,6 +201,8 @@ data class LauncherConfig(
     val homeIconSizeDp: Int = DEFAULT_ICON_SIZE_DP,
     val iconColorTheme: IconColorTheme = IconColorTheme.ORIGINAL,
     val customIconBgHex: Long = 0xFF0A0A0DL,
+    val customIconBgEndHex: Long = 0xFF2B0F1CL,
+    val isIconGradientEnabled: Boolean = true,
     val customIconFgHex: Long = 0xFFFF1E38L,
     val customAppOverrides: Map<String, CustomAppOverride> = emptyMap(),
     val emblemCharacter: String = "N",
@@ -190,7 +216,10 @@ data class LauncherConfig(
         HomePageData(id = "page_right")
     ),
     val hasInitializedDefaults: Boolean = false,
-    val hasPlacedThemesApp: Boolean = false
+    val hasPlacedThemesApp: Boolean = false,
+    val hasPlacedPcApp: Boolean = false,
+    val isPcMode: Boolean = false,
+    val pcExeShortcuts: List<PcExeShortcut> = emptyList()
 )
 
 enum class ActiveOverlay {

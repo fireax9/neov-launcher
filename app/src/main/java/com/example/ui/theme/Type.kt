@@ -39,6 +39,32 @@ val FredokaFontFamily = FontFamily(
     Font(R.font.fredoka, FontWeight.Bold)
 )
 
+val PlayfairDisplayFontFamily = FontFamily(
+    Font(R.font.playfair_display, FontWeight.Normal),
+    Font(R.font.playfair_display, FontWeight.Bold)
+)
+
+val DotGothic16FontFamily = FontFamily(
+    Font(R.font.dotgothic16, FontWeight.Normal)
+)
+
+val SyneFontFamily = FontFamily(
+    Font(R.font.syne, FontWeight.Normal),
+    Font(R.font.syne, FontWeight.Bold)
+)
+
+val OutfitFontFamily = FontFamily(
+    Font(R.font.outfit, FontWeight.Normal),
+    Font(R.font.outfit, FontWeight.Medium),
+    Font(R.font.outfit, FontWeight.Bold)
+)
+
+val OswaldFontFamily = FontFamily(
+    Font(R.font.oswald, FontWeight.Normal),
+    Font(R.font.oswald, FontWeight.Medium),
+    Font(R.font.oswald, FontWeight.Bold)
+)
+
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = SpaceGroteskFontFamily,

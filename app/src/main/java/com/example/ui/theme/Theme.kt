@@ -8,6 +8,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.lerp
 import com.example.model.LauncherAccent
 
 private val LauncherShapes = Shapes(
@@ -21,13 +22,24 @@ private val LauncherShapes = Shapes(
 fun NLauncherTheme(
     darkTheme: Boolean = true,
     accent: LauncherAccent = LauncherAccent.CORAL,
+    useCustomAccent: Boolean = false,
+    customAccentHex: Long = 0xFFFF4D2DL,
     content: @Composable () -> Unit
 ) {
-    val (accentColor, darkContainer, lightContainer) = when (accent) {
-        LauncherAccent.CORAL -> Triple(ElectricCoral, ElectricCoralContainer, ElectricCoralContainerLight)
-        LauncherAccent.COBALT -> Triple(CobaltPulse, CobaltContainer, CobaltContainerLight)
-        LauncherAccent.MINT -> Triple(SageMint, SageMintContainer, SageMintContainerLight)
-        LauncherAccent.AMBER -> Triple(AmberGlow, AmberContainer, AmberContainerLight)
+    val (accentColor, darkContainer, lightContainer) = if (useCustomAccent) {
+        val customColor = Color(customAccentHex)
+        Triple(
+            customColor,
+            lerp(customColor, ObsidianBg, 0.72f),
+            lerp(customColor, Color.White, 0.82f)
+        )
+    } else {
+        when (accent) {
+            LauncherAccent.CORAL -> Triple(ElectricCoral, ElectricCoralContainer, ElectricCoralContainerLight)
+            LauncherAccent.COBALT -> Triple(CobaltPulse, CobaltContainer, CobaltContainerLight)
+            LauncherAccent.MINT -> Triple(SageMint, SageMintContainer, SageMintContainerLight)
+            LauncherAccent.AMBER -> Triple(AmberGlow, AmberContainer, AmberContainerLight)
+        }
     }
 
     val colorScheme = if (darkTheme) {

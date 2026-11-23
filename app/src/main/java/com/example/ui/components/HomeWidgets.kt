@@ -116,11 +116,10 @@ import com.example.model.HomeWidgetId
 import com.example.model.IconColorTheme
 import com.example.model.IconShapeStyle
 import com.example.model.InstalledApp
+import com.example.model.LauncherConfig
 import com.example.model.PhotoFrameStyle
 import com.example.ui.strings.AppStrings
-import com.example.ui.theme.FredokaFontFamily
 import com.example.ui.theme.JetBrainsMonoFontFamily
-import com.example.ui.theme.SixCapsFontFamily
 import com.example.ui.theme.SpaceGroteskFontFamily
 import java.io.File
 import java.time.LocalDateTime
@@ -133,125 +132,16 @@ import kotlin.math.roundToInt
 @Composable
 fun MinimalClockHeader(
     now: LocalDateTime,
-    clockStyle: ClockStyle = ClockStyle.MINIMAL_CLEAN,
+    config: LauncherConfig,
     onCycleClockStyle: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val locale = Locale.getDefault()
-    val timeText = now.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH))
-    val dateText = now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
-    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-
-    val frostedBrush = remember(isDark) {
-        if (isDark) {
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.92f),
-                    Color.White.copy(alpha = 0.62f),
-                    Color.White.copy(alpha = 0.34f)
-                )
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    Color(0xFF161922).copy(alpha = 0.90f),
-                    Color(0xFF161922).copy(alpha = 0.66f),
-                    Color(0xFF161922).copy(alpha = 0.38f)
-                )
-            )
-        }
-    }
-
-    when (clockStyle) {
-        ClockStyle.MINIMAL_CLEAN -> {
-            Column(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .clickable { onCycleClockStyle() }
-                    .padding(horizontal = 8.dp, vertical = 12.dp)
-                    .testTag("home_clock_header")
-            ) {
-                Text(
-                    text = timeText,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 56.sp,
-                        lineHeight = 60.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        ClockStyle.TALL_CONDENSED_GLASS -> {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable { onCycleClockStyle() }
-                    .padding(horizontal = 8.dp, vertical = 10.dp)
-                    .testTag("home_clock_header")
-            ) {
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = timeText,
-                    style = TextStyle(
-                        fontFamily = SixCapsFontFamily,
-                        fontSize = 114.sp,
-                        lineHeight = 112.sp,
-                        letterSpacing = 2.sp,
-                        brush = frostedBrush
-                    ),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.graphicsLayer(scaleY = 1.12f)
-                )
-            }
-        }
-        ClockStyle.BUBBLY_OVERLAP_GLASS -> {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable { onCycleClockStyle() }
-                    .padding(horizontal = 8.dp, vertical = 10.dp)
-                    .testTag("home_clock_header")
-            ) {
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = timeText,
-                    style = TextStyle(
-                        fontFamily = FredokaFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 76.sp,
-                        lineHeight = 80.sp,
-                        letterSpacing = (-7).sp,
-                        brush = frostedBrush
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
+    ModernClockHeader(
+        now = now,
+        config = config,
+        onCycleClockStyle = onCycleClockStyle,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -445,6 +335,8 @@ fun ScatteredAppsGrid(
     iconColorTheme: IconColorTheme,
     customBgHex: Long,
     customFgHex: Long,
+    customBgEndHex: Long = 0xFF2B0F1CL,
+    isIconGradientEnabled: Boolean = true,
     overrides: Map<String, CustomAppOverride>,
     iconSizeDp: Int = 58,
     isLiquidGlass: Boolean = true,
@@ -633,6 +525,8 @@ fun ScatteredAppsGrid(
                                 iconColorTheme = iconColorTheme,
                                 customBgHex = customBgHex,
                                 customFgHex = customFgHex,
+                                customBgEndHex = customBgEndHex,
+                                isIconGradientEnabled = isIconGradientEnabled,
                                 override = overrides[app.packageName],
                                 isLiquidGlass = isLiquidGlass,
                                 iconSize = resolvedIconSize,
@@ -771,6 +665,8 @@ fun PageFoldersGrid(
     iconColorTheme: IconColorTheme,
     customBgHex: Long,
     customFgHex: Long,
+    customBgEndHex: Long = 0xFF2B0F1CL,
+    isIconGradientEnabled: Boolean = true,
     overrides: Map<String, CustomAppOverride>,
     iconSizeDp: Int = 58,
     isLiquidGlass: Boolean = true,
@@ -798,6 +694,8 @@ fun PageFoldersGrid(
                             iconColorTheme = iconColorTheme,
                             customBgHex = customBgHex,
                             customFgHex = customFgHex,
+                            customBgEndHex = customBgEndHex,
+                            isIconGradientEnabled = isIconGradientEnabled,
                             overrides = overrides,
                             iconSizeDp = iconSizeDp,
                             isLiquidGlass = isLiquidGlass,
@@ -825,6 +723,8 @@ private fun FolderPodCard(
     iconColorTheme: IconColorTheme,
     customBgHex: Long,
     customFgHex: Long,
+    customBgEndHex: Long = 0xFF2B0F1CL,
+    isIconGradientEnabled: Boolean = true,
     overrides: Map<String, CustomAppOverride>,
     iconSizeDp: Int = 58,
     isLiquidGlass: Boolean,
@@ -916,6 +816,8 @@ private fun FolderPodCard(
                                     iconColorTheme = iconColorTheme,
                                     customBgHex = customBgHex,
                                     customFgHex = customFgHex,
+                                    customBgEndHex = customBgEndHex,
+                                    isIconGradientEnabled = isIconGradientEnabled,
                                     override = overrides[app.packageName],
                                     isLiquidGlass = isLiquidGlass,
                                     iconSize = (iconSizeDp * 0.76f).roundToInt().coerceIn(34, 54).dp,

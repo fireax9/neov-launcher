@@ -5,12 +5,15 @@ import android.content.res.Configuration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -100,6 +103,14 @@ class ExampleRobolectricTest {
             composeTestRule.waitForIdle()
         }
 
+        // Verify Custom Color & Gradient Studio
+        composeTestRule.onNodeWithTag("custom_color_gradient_studio").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("color_target_ICON_BG").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("auto_shade_gradient_button").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("color_target_THEME_ACCENT").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("color_shade_chip_2").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
         composeTestRule.onNodeWithTag("icon_size_preset_68").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("icon_size_value_label").assertTextContains("68 dp")
@@ -112,9 +123,14 @@ class ExampleRobolectricTest {
         composeTestRule.onNodeWithTag("liquid_glass_toggle").performClick()
         composeTestRule.waitForIdle()
 
+        composeTestRule.onNodeWithTag("clock_styles_row").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithTag("clock_style_TALL_CONDENSED_GLASS").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("clock_style_BUBBLY_OVERLAP_GLASS").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("clock_style_NOTHING_DOT_MATRIX").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("clock_style_NEON_CYBER_GLOW").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
         // Test Animated Live Wallpapers & Video Picker visibility
@@ -166,5 +182,132 @@ class ExampleRobolectricTest {
         composeTestRule.onNodeWithTag("floating_search_bar").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("search_overlay").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("close_search_button").performClick()
+        composeTestRule.waitForIdle()
+
+        // 5. Built-in PC App triggers Windows 11 PC Mode confirmation dialog, rotates Activity to Landscape, opens multiple floating windows (Chrome PC, Notepad.exe, EXE Runner), and returns via Launcher app
+        composeTestRule.onNodeWithTag("app_tile_com.nlauncher.internal.pc").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("pc_mode_confirm_dialog").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("confirm_pc_mode_button").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            composeTestRule.activity.requestedOrientation
+        )
+        assertEquals(
+            android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES,
+            composeTestRule.activity.window.attributes.layoutInDisplayCutoutMode
+        )
+
+        composeTestRule.onNodeWithTag("windows11_desktop_root").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_taskbar").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_desktop_return_launcher").assertIsDisplayed()
+
+        // Verify NO Game Launcher and NO bottom taskbar Launcher emblem beside Wi-Fi
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_desktop_games").fetchSemanticsNodes().isEmpty())
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_taskbar_return_launcher").fetchSemanticsNodes().isEmpty())
+
+        // Open Calc.exe and verify full arithmetic works in floating window (7 + 5 = 12)
+        composeTestRule.onNodeWithTag("win11_desktop_calc").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_CALCULATOR_EXE").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_calc_body").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("calc_key_7").performClick()
+        composeTestRule.onNodeWithTag("calc_key_+").performClick()
+        composeTestRule.onNodeWithTag("calc_key_5").performClick()
+        composeTestRule.onNodeWithTag("calc_key_=").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("calc_display_text").assertTextContains("12")
+        composeTestRule.onNodeWithTag("win11_window_close_CALCULATOR_EXE").performClick()
+        composeTestRule.waitForIdle()
+
+        // Open Chrome PC and toggle the new Downloads manager panel
+        composeTestRule.onNodeWithTag("win11_desktop_chrome").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_CHROME_PC").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_chrome_pc_body").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("chrome_pc_downloads_button").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("chrome_pc_downloads_panel").assertIsDisplayed()
+
+        // Open Pure Windows File Explorer (folders & files only, double-tap to open)
+        composeTestRule.onNodeWithTag("win11_taskbar_explorer").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_this_pc_explorer").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("explorer_files_list")
+            .performScrollToNode(hasTestTag("explorer_entry_Downloads"))
+        composeTestRule.onNodeWithTag("explorer_entry_Downloads").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("explorer_files_list")
+            .performScrollToNode(hasTestTag("explorer_entry_Documents"))
+        composeTestRule.onNodeWithTag("explorer_entry_Documents").performTouchInput {
+            doubleClick()
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("explorer_entry_Welcome_Windows11.txt").assertIsDisplayed()
+
+        // Open Window Size Customizer on File Explorer window
+        composeTestRule.onNodeWithTag("win11_window_size_THIS_PC").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_size_panel").assertIsDisplayed()
+
+        // Open EXE Runner (Taskbar) + Notepad.exe (Start Menu) simultaneously!
+        composeTestRule.onNodeWithTag("win11_taskbar_exe").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_EXE_RUNNER").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("win11_start_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_start_tile_NOTEPAD_EXE").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_NOTEPAD_EXE").assertIsDisplayed()
+
+        // Verify multiple floating windows exist simultaneously
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_CHROME_PC").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_THIS_PC").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_NOTEPAD_EXE").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_EXE_RUNNER").fetchSemanticsNodes().isNotEmpty())
+
+        // Test top-down window controls: Minimize (—) on NOTEPAD_EXE, Close (X) on EXE_RUNNER, Close THIS_PC, Maximize CHROME_PC
+        composeTestRule.onNodeWithTag("win11_window_minimize_NOTEPAD_EXE").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_NOTEPAD_EXE").fetchSemanticsNodes().isEmpty())
+
+        composeTestRule.onNodeWithTag("win11_window_close_EXE_RUNNER").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_EXE_RUNNER").fetchSemanticsNodes().isEmpty())
+
+        composeTestRule.onNodeWithTag("win11_window_close_THIS_PC").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(composeTestRule.onAllNodesWithTag("win11_window_THIS_PC").fetchSemanticsNodes().isEmpty())
+
+        composeTestRule.onNodeWithTag("win11_window_maximize_CHROME_PC").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_CHROME_PC").assertIsDisplayed()
+
+        // Restore minimized Notepad from dynamic Taskbar tab!
+        composeTestRule.onNodeWithTag("win11_taskbar_dyn_NOTEPAD_EXE").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_NOTEPAD_EXE").assertIsDisplayed()
+
+        // Open Start Menu -> App Manager has standalone "Launcher" return app
+        composeTestRule.onNodeWithTag("win11_start_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_start_menu").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_start_return_launcher").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        // Reverted cleanly back to Mobile N Launcher and restored orientation & normal cutout mode
+        assertTrue(composeTestRule.onAllNodesWithTag("windows11_desktop_root").fetchSemanticsNodes().isEmpty())
+        assertEquals(
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+            composeTestRule.activity.requestedOrientation
+        )
+        assertEquals(
+            android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT,
+            composeTestRule.activity.window.attributes.layoutInDisplayCutoutMode
+        )
+        composeTestRule.onNodeWithTag("home_clock_header").assertIsDisplayed()
     }
 }

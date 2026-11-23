@@ -1,6 +1,7 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -30,7 +31,10 @@ import com.example.model.LauncherConfig
 import com.example.model.MAX_HOME_PAGES
 import com.example.model.MAX_ICON_SIZE_DP
 import com.example.model.MIN_ICON_SIZE_DP
+import com.example.model.PC_APP_PACKAGE
+import com.example.model.PcExeShortcut
 import com.example.model.PhotoFrameStyle
+import com.example.model.RETURN_LAUNCHER_PACKAGE
 import com.example.model.THEMES_APP_PACKAGE
 import com.example.model.ThemeMode
 import com.example.model.WallpaperChoice
@@ -66,7 +70,11 @@ data class LauncherUiState(
     val isHomeEditMode: Boolean = false,
     val selectedEditAppPackage: String? = null,
     val initialHubTab: Int = 0,
-    val hubSessionId: Int = 0
+    val hubSessionId: Int = 0,
+    val showPcConfirmDialog: Boolean = false,
+    val showBuiltInCalculatorDialog: Boolean = false,
+    val wineBridgePackages: List<String> = emptyList(),
+    val pcExecutionLogs: List<String> = emptyList()
 ) {
     val showDefaultLauncherGate: Boolean
         get() = !isDefaultLauncher && !gateCompleted
@@ -145,16 +153,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             isLiquidGlassEnabled = local.pendingLiquidGlassEnabled ?: rawConfig.isLiquidGlassEnabled,
             clockStyle = local.pendingClockStyle ?: rawConfig.clockStyle,
             accent = local.pendingAccent ?: rawConfig.accent,
+            useCustomAccent = local.pendingUseCustomAccent ?: rawConfig.useCustomAccent,
+            customAccentHex = local.pendingCustomAccentStart ?: rawConfig.customAccentHex,
+            customAccentEndHex = local.pendingCustomAccentEnd ?: rawConfig.customAccentEndHex,
+            isAccentGradientEnabled = local.pendingIsAccentGradient ?: rawConfig.isAccentGradientEnabled,
             iconShape = local.pendingIconShape ?: rawConfig.iconShape,
             iconColorTheme = local.pendingIconColorTheme?.first ?: rawConfig.iconColorTheme,
             customIconBgHex = local.pendingIconColorTheme?.second ?: rawConfig.customIconBgHex,
-            customIconFgHex = local.pendingIconColorTheme?.third ?: rawConfig.customIconFgHex
+            customIconFgHex = local.pendingIconColorTheme?.third ?: rawConfig.customIconFgHex,
+            customIconBgEndHex = local.pendingCustomIconBgEnd ?: rawConfig.customIconBgEndHex,
+            isIconGradientEnabled = local.pendingIsIconGradient ?: rawConfig.isIconGradientEnabled,
+            isPcMode = local.pendingIsPcMode ?: rawConfig.isPcMode
         )
 
         if (!config.hasInitializedDefaults && apps.isNotEmpty() && local.pendingPages == null) {
             initializeCleanDefaultPages(apps)
-        } else if (config.hasInitializedDefaults && !config.hasPlacedThemesApp && apps.isNotEmpty() && local.pendingPages == null) {
-            ensureThemesAppPlaced(config.pages)
+        } else if (config.hasInitializedDefaults && (!config.hasPlacedThemesApp || !config.hasPlacedPcApp) && apps.isNotEmpty() && local.pendingPages == null) {
+            ensureBuiltInAppsPlaced(config.pages, needThemes = !config.hasPlacedThemesApp, needPc = !config.hasPlacedPcApp)
         }
 
         val safePageIndex = local.currentPageIndex.coerceIn(0, (config.pages.size - 1).coerceAtLeast(0))
@@ -179,7 +194,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             isHomeEditMode = local.isHomeEditMode,
             selectedEditAppPackage = local.selectedEditAppPackage,
             initialHubTab = local.initialHubTab,
-            hubSessionId = local.hubSessionId
+            hubSessionId = local.hubSessionId,
+            showPcConfirmDialog = local.showPcConfirmDialog,
+            showBuiltInCalculatorDialog = local.showBuiltInCalculatorDialog,
+            wineBridgePackages = local.wineBridgePackages,
+            pcExecutionLogs = local.pcExecutionLogs
         )
     }.stateIn(
         scope = viewModelScope,
@@ -188,17 +207,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     )
 
     private var defaultsTriggered = false
-    private var themesPlacementTriggered = false
+    private var builtInsPlacementTriggered = false
+
+    init {
+        viewModelScope.launch {
+            val bridges = appsRepo.findInstalledWineBridgeApps()
+            interactionState.update { it.copy(wineBridgePackages = bridges) }
+        }
+    }
 
     private fun initializeCleanDefaultPages(apps: List<InstalledApp>) {
         if (defaultsTriggered) return
         defaultsTriggered = true
-        themesPlacementTriggered = true
+        builtInsPlacementTriggered = true
         viewModelScope.launch {
-            // Scattered individual main apps ONLY on Page 0 with Themes app centered among them; Page 1 starts clean
-            val regularApps = apps.filterNot { it.packageName == THEMES_APP_PACKAGE }.take(8).map { it.packageName }.toMutableList()
+            // Scattered individual main apps ONLY on Page 0 with Themes & PC apps centered among them; Page 1 starts clean
+            val regularApps = apps
+                .filterNot { it.packageName == THEMES_APP_PACKAGE || it.packageName == PC_APP_PACKAGE }
+                .take(7)
+                .map { it.packageName }
+                .toMutableList()
             val midIndex = (regularApps.size / 2).coerceIn(0, regularApps.size)
             regularApps.add(midIndex, THEMES_APP_PACKAGE)
+            val pcIndex = (midIndex + 1).coerceIn(0, regularApps.size)
+            regularApps.add(pcIndex, PC_APP_PACKAGE)
             val initialPages = listOf(
                 HomePageData(
                     id = "page_main",
@@ -213,31 +245,47 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     widgets = emptyList()
                 )
             )
-            prefsRepo.savePages(initialPages, markInitialized = true, markThemesPlaced = true)
+            prefsRepo.savePages(initialPages, markInitialized = true, markThemesPlaced = true, markPcPlaced = true)
         }
     }
 
-    private fun ensureThemesAppPlaced(currentPages: List<HomePageData>) {
-        if (themesPlacementTriggered) return
-        themesPlacementTriggered = true
+    private fun ensureBuiltInAppsPlaced(
+        currentPages: List<HomePageData>,
+        needThemes: Boolean,
+        needPc: Boolean
+    ) {
+        if (builtInsPlacementTriggered) return
+        builtInsPlacementTriggered = true
         viewModelScope.launch {
             pagesMutex.withLock {
-                val alreadyOnPage = currentPages.any { THEMES_APP_PACKAGE in it.pinnedPackages }
-                if (alreadyOnPage) {
-                    prefsRepo.markThemesAppPlaced()
-                    return@withLock
-                }
                 val mutable = currentPages.toMutableList()
                 val page0 = mutable.firstOrNull() ?: HomePageData("page_main")
                 val pinned = page0.pinnedPackages.toMutableList()
-                val midIndex = (pinned.size / 2).coerceIn(0, pinned.size)
-                pinned.add(midIndex, THEMES_APP_PACKAGE)
-                if (mutable.isEmpty()) {
-                    mutable.add(page0.copy(pinnedPackages = pinned))
-                } else {
-                    mutable[0] = page0.copy(pinnedPackages = pinned)
+                var changed = false
+
+                if (needThemes && currentPages.none { THEMES_APP_PACKAGE in it.pinnedPackages }) {
+                    val midIndex = (pinned.size / 2).coerceIn(0, pinned.size)
+                    pinned.add(midIndex, THEMES_APP_PACKAGE)
+                    changed = true
                 }
-                prefsRepo.savePages(mutable, markInitialized = true, markThemesPlaced = true)
+                if (needPc && currentPages.none { PC_APP_PACKAGE in it.pinnedPackages }) {
+                    val themesPos = pinned.indexOf(THEMES_APP_PACKAGE)
+                    val pcPos = if (themesPos >= 0) (themesPos + 1).coerceIn(0, pinned.size) else pinned.size
+                    pinned.add(pcPos, PC_APP_PACKAGE)
+                    changed = true
+                }
+
+                if (changed) {
+                    if (mutable.isEmpty()) {
+                        mutable.add(page0.copy(pinnedPackages = pinned))
+                    } else {
+                        mutable[0] = page0.copy(pinnedPackages = pinned)
+                    }
+                    prefsRepo.savePages(mutable, markInitialized = true, markThemesPlaced = true, markPcPlaced = true)
+                } else {
+                    if (needThemes) prefsRepo.markThemesAppPlaced()
+                    if (needPc) prefsRepo.markPcAppPlaced()
+                }
             }
         }
     }
@@ -349,17 +397,152 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun launchApp(app: InstalledApp) {
-        if (app.packageName == THEMES_APP_PACKAGE) {
-            openCustomizeHub(initialTab = 2)
-            return
+    fun launchApp(app: InstalledApp, hostContext: Context? = null) {
+        when (app.packageName) {
+            THEMES_APP_PACKAGE -> {
+                openCustomizeHub(initialTab = 2)
+                return
+            }
+            PC_APP_PACKAGE -> {
+                requestPcModeConfirmation()
+                return
+            }
+            RETURN_LAUNCHER_PACKAGE -> {
+                setPcMode(false)
+                return
+            }
         }
-        val launched = appsRepo.launchApp(app.packageName, app.activityName)
+        val launched = appsRepo.launchApp(app.packageName, app.activityName, hostContext)
         if (launched) {
             closeOverlay()
+        } else if (appsRepo.isCalculatorApp(app.packageName, app.label)) {
+            openBuiltInCalculator()
         } else {
             _events.tryEmit(getApplication<Application>().getString(R.string.launch_error))
         }
+    }
+
+    fun openBuiltInCalculator() {
+        interactionState.update {
+            it.copy(
+                showBuiltInCalculatorDialog = true,
+                activeOverlay = ActiveOverlay.NONE,
+                isHomeEditMode = false
+            )
+        }
+    }
+
+    fun dismissBuiltInCalculator() {
+        interactionState.update { it.copy(showBuiltInCalculatorDialog = false) }
+    }
+
+    fun requestPcModeConfirmation() {
+        interactionState.update {
+            it.copy(
+                showPcConfirmDialog = true,
+                activeOverlay = ActiveOverlay.NONE,
+                isHomeEditMode = false
+            )
+        }
+    }
+
+    fun dismissPcModeConfirmation() {
+        interactionState.update { it.copy(showPcConfirmDialog = false) }
+    }
+
+    fun setPcMode(enabled: Boolean) {
+        interactionState.update {
+            it.copy(
+                pendingIsPcMode = enabled,
+                showPcConfirmDialog = false,
+                activeOverlay = ActiveOverlay.NONE,
+                isHomeEditMode = false,
+                wineBridgePackages = appsRepo.findInstalledWineBridgeApps()
+            )
+        }
+        viewModelScope.launch {
+            prefsMutex.withLock {
+                val target = interactionState.value.pendingIsPcMode ?: enabled
+                prefsRepo.updatePcMode(target)
+                interactionState.update { if (it.pendingIsPcMode == target) it.copy(pendingIsPcMode = null) else it }
+            }
+        }
+    }
+
+    fun isGameApp(app: InstalledApp): Boolean = appsRepo.isGameApp(app.packageName, app.label)
+
+    fun isBrowserApp(app: InstalledApp): Boolean {
+        val key = "${app.packageName.lowercase()} ${app.label.lowercase()}"
+        return listOf(
+            "chrome", "browser", "firefox", "mozilla", "edge", "emmx",
+            "brave", "opera", "vivaldi", "duckduckgo", "kiwi", "sbrowser"
+        ).any { key.contains(it) }
+    }
+
+    fun launchAppInPcWindowMode(app: InstalledApp) {
+        when (app.packageName) {
+            THEMES_APP_PACKAGE -> {
+                openCustomizeHub(initialTab = 2)
+                return
+            }
+            PC_APP_PACKAGE -> return
+            RETURN_LAUNCHER_PACKAGE -> {
+                setPcMode(false)
+                return
+            }
+        }
+        val launched = appsRepo.launchAppInPcWindowMode(app.packageName, app.activityName)
+        if (!launched) {
+            _events.tryEmit(getApplication<Application>().getString(R.string.launch_error))
+        }
+    }
+
+    fun addExeShortcutFromUri(uri: Uri) {
+        viewModelScope.launch {
+            val shortcut = prefsRepo.importExeEntry(uri) ?: return@launch
+            val current = uiState.value.config.pcExeShortcuts
+            val next = (listOf(shortcut) + current.filterNot { it.uriString == shortcut.uriString }).take(30)
+            prefsRepo.savePcExeShortcuts(next)
+            val headerNote = prefsRepo.inspectExeHeader(shortcut.uriString)
+            interactionState.update {
+                it.copy(pcExecutionLogs = (listOf("[WIN11] Added ${shortcut.name} • $headerNote") + it.pcExecutionLogs).take(20))
+            }
+        }
+    }
+
+    fun removeExeShortcut(id: String) {
+        viewModelScope.launch {
+            val next = uiState.value.config.pcExeShortcuts.filterNot { it.id == id }
+            prefsRepo.savePcExeShortcuts(next)
+        }
+    }
+
+    fun runExeShortcut(shortcut: PcExeShortcut) {
+        viewModelScope.launch {
+            val headerStatus = prefsRepo.inspectExeHeader(shortcut.uriString)
+            val launchedExternal = appsRepo.launchExeUriExternal(shortcut.uriString)
+            val bridges = appsRepo.findInstalledWineBridgeApps()
+            val entry = if (launchedExternal) {
+                "[EXEC] Dispatched ${shortcut.name} via external Wine/Bridge ($headerStatus)"
+            } else if (bridges.isNotEmpty()) {
+                "[EXEC] ${shortcut.name} ready — $headerStatus. Detected bridge: ${bridges.first()}"
+            } else {
+                "[WIN11 SHELL] Loaded ${shortcut.name} (${formatBytes(shortcut.sizeBytes)}) • $headerStatus"
+            }
+            interactionState.update {
+                it.copy(
+                    wineBridgePackages = bridges,
+                    pcExecutionLogs = (listOf(entry) + it.pcExecutionLogs).take(20)
+                )
+            }
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0L) return "URI"
+        val kb = bytes / 1024.0
+        return if (kb >= 1024.0) String.format(java.util.Locale.ENGLISH, "%.1f MB", kb / 1024.0)
+        else String.format(java.util.Locale.ENGLISH, "%.0f KB", kb)
     }
 
     fun openAppInfo(app: InstalledApp) {
@@ -587,6 +770,40 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun setCustomIconColorsAndGradient(
+        bgStartHex: Long,
+        bgEndHex: Long,
+        fgHex: Long,
+        gradientEnabled: Boolean
+    ) {
+        val pending = Triple(IconColorTheme.CUSTOM_DUOTONE, bgStartHex as Long?, fgHex as Long?)
+        interactionState.update {
+            it.copy(
+                pendingIconColorTheme = pending,
+                pendingCustomIconBgEnd = bgEndHex,
+                pendingIsIconGradient = gradientEnabled
+            )
+        }
+        viewModelScope.launch {
+            prefsMutex.withLock {
+                prefsRepo.updateIconColorTheme(
+                    theme = IconColorTheme.CUSTOM_DUOTONE,
+                    customBgHex = bgStartHex,
+                    customFgHex = fgHex,
+                    customBgEndHex = bgEndHex,
+                    isGradientEnabled = gradientEnabled
+                )
+                interactionState.update {
+                    it.copy(
+                        pendingIconColorTheme = if (it.pendingIconColorTheme == pending) null else it.pendingIconColorTheme,
+                        pendingCustomIconBgEnd = if (it.pendingCustomIconBgEnd == bgEndHex) null else it.pendingCustomIconBgEnd,
+                        pendingIsIconGradient = if (it.pendingIsIconGradient == gradientEnabled) null else it.pendingIsIconGradient
+                    )
+                }
+            }
+        }
+    }
+
     fun setIconShape(shape: IconShapeStyle) {
         interactionState.update { it.copy(pendingIconShape = shape) }
         viewModelScope.launch {
@@ -698,12 +915,51 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setAccent(accent: LauncherAccent) {
-        interactionState.update { it.copy(pendingAccent = accent) }
+        interactionState.update {
+            it.copy(
+                pendingAccent = accent,
+                pendingUseCustomAccent = false
+            )
+        }
         viewModelScope.launch {
             prefsMutex.withLock {
                 val target = interactionState.value.pendingAccent ?: accent
                 prefsRepo.updateAccent(target)
-                interactionState.update { if (it.pendingAccent == target) it.copy(pendingAccent = null) else it }
+                interactionState.update {
+                    it.copy(
+                        pendingAccent = if (it.pendingAccent == target) null else it.pendingAccent,
+                        pendingUseCustomAccent = if (it.pendingUseCustomAccent == false) null else it.pendingUseCustomAccent
+                    )
+                }
+            }
+        }
+    }
+
+    fun setCustomAccent(startHex: Long, endHex: Long, gradientEnabled: Boolean) {
+        interactionState.update {
+            it.copy(
+                pendingUseCustomAccent = true,
+                pendingCustomAccentStart = startHex,
+                pendingCustomAccentEnd = endHex,
+                pendingIsAccentGradient = gradientEnabled
+            )
+        }
+        viewModelScope.launch {
+            prefsMutex.withLock {
+                prefsRepo.updateCustomAccent(
+                    useCustom = true,
+                    startHex = startHex,
+                    endHex = endHex,
+                    gradientEnabled = gradientEnabled
+                )
+                interactionState.update {
+                    it.copy(
+                        pendingUseCustomAccent = if (it.pendingUseCustomAccent == true) null else it.pendingUseCustomAccent,
+                        pendingCustomAccentStart = if (it.pendingCustomAccentStart == startHex) null else it.pendingCustomAccentStart,
+                        pendingCustomAccentEnd = if (it.pendingCustomAccentEnd == endHex) null else it.pendingCustomAccentEnd,
+                        pendingIsAccentGradient = if (it.pendingIsAccentGradient == gradientEnabled) null else it.pendingIsAccentGradient
+                    )
+                }
             }
         }
     }
@@ -759,8 +1015,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val pendingLiquidGlassEnabled: Boolean? = null,
         val pendingClockStyle: ClockStyle? = null,
         val pendingAccent: LauncherAccent? = null,
+        val pendingUseCustomAccent: Boolean? = null,
+        val pendingCustomAccentStart: Long? = null,
+        val pendingCustomAccentEnd: Long? = null,
+        val pendingIsAccentGradient: Boolean? = null,
         val pendingIconShape: IconShapeStyle? = null,
         val pendingIconColorTheme: Triple<IconColorTheme, Long?, Long?>? = null,
+        val pendingCustomIconBgEnd: Long? = null,
+        val pendingIsIconGradient: Boolean? = null,
+        val pendingIsPcMode: Boolean? = null,
+        val showPcConfirmDialog: Boolean = false,
+        val showBuiltInCalculatorDialog: Boolean = false,
+        val wineBridgePackages: List<String> = emptyList(),
+        val pcExecutionLogs: List<String> = emptyList(),
         val initialHubTab: Int = 0,
         val hubSessionId: Int = 0
     )

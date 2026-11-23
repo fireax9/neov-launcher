@@ -1,6 +1,12 @@
 package com.example.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import android.os.Build
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -26,6 +32,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,13 +50,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -65,6 +78,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +88,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.PcFileSystemManager
 import com.example.model.ActiveOverlay
 import com.example.model.HomePageData
 import com.example.model.HomeWidgetId
@@ -92,12 +107,15 @@ import com.example.ui.components.LiquidGlassSurface
 import com.example.ui.components.MediaControlWidget
 import com.example.ui.components.MinimalClockHeader
 import com.example.ui.components.PageFoldersGrid
+import com.example.ui.components.PcConversionConfirmDialog
 import com.example.ui.components.PhotoFrameEditorDialog
 import com.example.ui.components.PhotoFrameWidget
 import com.example.ui.components.ScatteredAppsGrid
 import com.example.ui.components.SearchOverlay
 import com.example.ui.components.SystemPulseWidget
 import com.example.ui.components.VisualCustomizeHubSheet
+import com.example.ui.components.Windows11DesktopRoot
+import com.example.ui.components.pc.CalculatorExeBody
 import com.example.ui.strings.AppStrings
 import com.example.ui.strings.rememberAppStrings
 import com.example.ui.theme.NLauncherTheme
@@ -125,11 +143,28 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
         }
     }
 
+    val context = LocalContext.current
+    val hostActivity = remember(context) { context.findHostActivity() }
+    DisposableEffect(config.isPcMode, hostActivity) {
+        hostActivity?.requestedOrientation = if (config.isPcMode) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+        applyPcFullScreen(hostActivity, config.isPcMode)
+        onDispose {
+            if (config.isPcMode) {
+                applyPcFullScreen(hostActivity, false)
+            }
+        }
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, config.isPcMode, hostActivity) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshDefaultLauncherStatus()
+                applyPcFullScreen(hostActivity, config.isPcMode)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -172,9 +207,32 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
         }
     }
 
+    val exeFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.addExeShortcutFromUri(it) }
+    }
+
+    val pcFileManager = remember(context) { PcFileSystemManager(context) }
+    var pcImportTargetFolder by remember { mutableStateOf("Downloads") }
+    val pcFileImportPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val imported = pcFileManager.importDocumentUri(uri, pcImportTargetFolder)
+                if (imported != null) {
+                    snackbarHostState.showSnackbar("${imported.name} → C:\\$pcImportTargetFolder")
+                }
+            }
+        }
+    }
+
     NLauncherTheme(
         darkTheme = effectiveDarkTheme,
-        accent = config.accent
+        accent = config.accent,
+        useCustomAccent = config.useCustomAccent,
+        customAccentHex = config.customAccentHex
     ) {
         if (state.showDefaultLauncherGate) {
             DefaultLauncherGateScreen(
@@ -213,21 +271,44 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
 
             Scaffold(
                 containerColor = Color.Transparent,
+                contentWindowInsets = if (config.isPcMode) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
             ) { _ ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { viewModel.enterHomeEditMode() })
+                        .let { mod ->
+                            if (!config.isPcMode) {
+                                mod.pointerInput(Unit) {
+                                    detectTapGestures(onLongPress = { viewModel.enterHomeEditMode() })
+                                }
+                            } else mod
                         }
                 ) {
-                    LauncherWallpaperBackground(
-                        wallpaper = config.wallpaper,
-                        customWallpaperPath = config.customWallpaperPath,
-                        customVideoWallpaperPath = config.customVideoWallpaperPath,
-                        darkTheme = effectiveDarkTheme
-                    )
+                    if (config.isPcMode) {
+                        Windows11DesktopRoot(
+                            state = state,
+                            strings = strings,
+                            effectiveDarkTheme = effectiveDarkTheme,
+                            onExitPcMode = { viewModel.setPcMode(false) },
+                            onOpenThemesHub = { viewModel.openCustomizeHub(2) },
+                            onPickExeFile = { exeFilePicker.launch(arrayOf("*/*")) },
+                            onImportFileToPcFolder = { folder ->
+                                pcImportTargetFolder = folder.ifBlank { "Downloads" }
+                                pcFileImportPicker.launch(arrayOf("*/*"))
+                            },
+                            onRunExeShortcut = { viewModel.runExeShortcut(it) },
+                            onRemoveExeShortcut = { viewModel.removeExeShortcut(it) },
+                            onToggleThemeMode = { viewModel.setThemeMode(it) },
+                            onOpenSystemAction = { viewModel.openSystemAction(it) }
+                        )
+                    } else {
+                        LauncherWallpaperBackground(
+                            wallpaper = config.wallpaper,
+                            customWallpaperPath = config.customWallpaperPath,
+                            customVideoWallpaperPath = config.customVideoWallpaperPath,
+                            darkTheme = effectiveDarkTheme
+                        )
 
                     // Multi-page Home Screen: Page 0 (Main) & Page 1 (to the right) + user-added pages
                     Box(
@@ -250,7 +331,7 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                                         pageData = pageData,
                                         state = state,
                                         strings = strings,
-                                        onLaunchApp = { viewModel.launchApp(it) },
+                                        onLaunchApp = { viewModel.launchApp(it, hostActivity) },
                                         onCustomizeApp = { viewModel.openAppCustomizer(it) },
                                         onOpenFolder = { folder -> viewModel.openFolder(pageIndex, folder.id) },
                                         onRemoveWidget = { widgetId -> viewModel.toggleWidgetOnPage(pageIndex, widgetId) },
@@ -348,7 +429,7 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
 
                     // App Drawer Overlay (Opened via the circular N button)
                     AnimatedVisibility(
-                        visible = state.activeOverlay == ActiveOverlay.APP_DRAWER,
+                        visible = !config.isPcMode && state.activeOverlay == ActiveOverlay.APP_DRAWER,
                         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) +
                             scaleIn(initialScale = 0.94f, animationSpec = spring(stiffness = Spring.StiffnessMedium)),
                         exit = fadeOut(spring(stiffness = Spring.StiffnessMedium)) +
@@ -364,13 +445,15 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             iconColorTheme = config.iconColorTheme,
                             customBgHex = config.customIconBgHex,
                             customFgHex = config.customIconFgHex,
+                            customBgEndHex = config.customIconBgEndHex,
+                            isIconGradientEnabled = config.isIconGradientEnabled,
                             overrides = config.customAppOverrides,
                             iconSizeDp = config.homeIconSizeDp,
                             isLiquidGlass = config.isLiquidGlassEnabled,
                             strings = strings,
                             onSelectCategory = { viewModel.selectDrawerCategory(it) },
                             onQueryChange = { viewModel.updateSearchQuery(it) },
-                            onLaunchApp = { viewModel.launchApp(it) },
+                            onLaunchApp = { viewModel.launchApp(it, hostActivity) },
                             onCustomizeApp = { viewModel.openAppCustomizer(it) },
                             onClose = { viewModel.closeOverlay() }
                         )
@@ -378,7 +461,7 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
 
                     // Search Overlay
                     AnimatedVisibility(
-                        visible = state.activeOverlay == ActiveOverlay.SEARCH,
+                        visible = !config.isPcMode && state.activeOverlay == ActiveOverlay.SEARCH,
                         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)),
                         exit = fadeOut(spring(stiffness = Spring.StiffnessMedium))
                     ) {
@@ -389,15 +472,18 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             iconColorTheme = config.iconColorTheme,
                             customBgHex = config.customIconBgHex,
                             customFgHex = config.customIconFgHex,
+                            customBgEndHex = config.customIconBgEndHex,
+                            isIconGradientEnabled = config.isIconGradientEnabled,
                             overrides = config.customAppOverrides,
                             isLiquidGlass = config.isLiquidGlassEnabled,
                             strings = strings,
                             onQueryChange = { viewModel.updateSearchQuery(it) },
-                            onLaunchApp = { viewModel.launchApp(it) },
+                            onLaunchApp = { viewModel.launchApp(it, hostActivity) },
                             onCustomizeApp = { viewModel.openAppCustomizer(it) },
                             onClose = { viewModel.closeOverlay() }
                         )
                     }
+                    } // close Mobile Launcher branch (`if (config.isPcMode) ... else ...`)
 
                     // Long-Press / Themes App Visual Customization Hub
                     if (state.activeOverlay == ActiveOverlay.CUSTOMIZE_HUB) {
@@ -417,6 +503,9 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             },
                             onIconColorThemeChange = { theme, bg, fg ->
                                 viewModel.setIconColorTheme(theme, bg, fg)
+                            },
+                            onIconCustomColorsAndGradient = { bgStart, bgEnd, fg, gradEnabled ->
+                                viewModel.setCustomIconColorsAndGradient(bgStart, bgEnd, fg, gradEnabled)
                             },
                             onIconShapeChange = { viewModel.setIconShape(it) },
                             onIconSizeChange = { viewModel.setIconSizeDp(it) },
@@ -444,11 +533,23 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             onClockStyleChange = { viewModel.setClockStyle(it) },
                             onEnterHomeEditMode = { viewModel.enterHomeEditMode() },
                             onAccentChange = { viewModel.setAccent(it) },
+                            onCustomAccentChange = { startHex, endHex, gradEnabled ->
+                                viewModel.setCustomAccent(startHex, endHex, gradEnabled)
+                            },
                             onUpdateEmblem = { ch, tag, style ->
                                 viewModel.updateEmblem(ch, tag, style)
                             },
                             onCustomizeAppClick = { app -> viewModel.openAppCustomizer(app) },
                             onDismiss = { viewModel.closeOverlay() }
+                        )
+                    }
+
+                    // PC Mode Conversion Confirmation Dialog ("Switch smartphone to PC Mode?")
+                    if (state.showPcConfirmDialog) {
+                        PcConversionConfirmDialog(
+                            strings = strings,
+                            onConfirm = { viewModel.setPcMode(true) },
+                            onDismiss = { viewModel.dismissPcModeConfirmation() }
                         )
                     }
 
@@ -466,10 +567,12 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             iconColorTheme = config.iconColorTheme,
                             customBgHex = config.customIconBgHex,
                             customFgHex = config.customIconFgHex,
+                            customBgEndHex = config.customIconBgEndHex,
+                            isIconGradientEnabled = config.isIconGradientEnabled,
                             overrides = config.customAppOverrides,
                             isLiquidGlass = config.isLiquidGlassEnabled,
                             strings = strings,
-                            onLaunchApp = { viewModel.launchApp(it) },
+                            onLaunchApp = { viewModel.launchApp(it, hostActivity) },
                             onCustomizeApp = { viewModel.openAppCustomizer(it) },
                             onSaveFolder = { title, accentHex, pkgs ->
                                 if (openFolder == null) {
@@ -519,7 +622,7 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             strings = strings,
                             onLaunch = {
                                 viewModel.dismissAppCustomizer()
-                                viewModel.launchApp(targetApp)
+                                viewModel.launchApp(targetApp, hostActivity)
                             },
                             onTogglePinOnPage = {
                                 viewModel.toggleAppPinnedOnPage(pagerState.currentPage, targetApp.packageName)
@@ -543,6 +646,25 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                                 { viewModel.uninstallApp(targetApp) }
                             },
                             onDismiss = { viewModel.dismissAppCustomizer() }
+                        )
+                    }
+
+                    // Built-in Calculator Fallback Dialog (Mobile Mode when external Calculator fails/stalls)
+                    if (state.showBuiltInCalculatorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { viewModel.dismissBuiltInCalculator() },
+                            title = { Text(strings.winCalcApp.removeSuffix(".exe")) },
+                            text = {
+                                Box(modifier = Modifier.fillMaxWidth().height(340.dp)) {
+                                    CalculatorExeBody()
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { viewModel.dismissBuiltInCalculator() }) {
+                                    Text(strings.winClose)
+                                }
+                            },
+                            modifier = Modifier.testTag("mobile_calculator_dialog")
                         )
                     }
                 }
@@ -617,7 +739,7 @@ private fun HomePageContent(
             item(key = "clock_header") {
                 MinimalClockHeader(
                     now = state.now,
-                    clockStyle = config.clockStyle,
+                    config = config,
                     onCycleClockStyle = onCycleClockStyle
                 )
             }
@@ -772,6 +894,8 @@ private fun HomePageContent(
                     iconColorTheme = config.iconColorTheme,
                     customBgHex = config.customIconBgHex,
                     customFgHex = config.customIconFgHex,
+                    customBgEndHex = config.customIconBgEndHex,
+                    isIconGradientEnabled = config.isIconGradientEnabled,
                     overrides = config.customAppOverrides,
                     iconSizeDp = config.homeIconSizeDp,
                     isLiquidGlass = config.isLiquidGlassEnabled,
@@ -791,6 +915,8 @@ private fun HomePageContent(
                     iconColorTheme = config.iconColorTheme,
                     customBgHex = config.customIconBgHex,
                     customFgHex = config.customIconFgHex,
+                    customBgEndHex = config.customIconBgEndHex,
+                    isIconGradientEnabled = config.isIconGradientEnabled,
                     overrides = config.customAppOverrides,
                     iconSizeDp = config.homeIconSizeDp,
                     isLiquidGlass = config.isLiquidGlassEnabled,
@@ -820,4 +946,32 @@ private fun HomePageContent(
             }
         }
     }
+}
+
+private fun applyPcFullScreen(activity: Activity?, enabled: Boolean) {
+    val window = activity?.window ?: return
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val lp = window.attributes
+        lp.layoutInDisplayCutoutMode = if (enabled) {
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        } else {
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+        }
+        window.attributes = lp
+    }
+    val controller = WindowCompat.getInsetsController(window, window.decorView)
+    if (enabled) {
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+    } else {
+        controller.show(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+    }
+}
+
+private tailrec fun Context.findHostActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findHostActivity()
+    else -> null
 }

@@ -111,9 +111,6 @@ import com.example.model.PhotoFrameStyle
 import com.example.model.ThemeMode
 import com.example.model.WallpaperChoice
 import com.example.ui.strings.AppStrings
-import com.example.ui.theme.FredokaFontFamily
-import com.example.ui.theme.SixCapsFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
 import kotlin.math.roundToInt
 
 private val FolderAccentChoices = listOf(
@@ -148,6 +145,7 @@ fun VisualCustomizeHubSheet(
     onOpenCreateFolder: () -> Unit,
     onToggleWidgetOnPage: (HomeWidgetId) -> Unit,
     onIconColorThemeChange: (IconColorTheme, Long?, Long?) -> Unit,
+    onIconCustomColorsAndGradient: (Long, Long, Long, Boolean) -> Unit,
     onIconShapeChange: (IconShapeStyle) -> Unit,
     onIconSizeChange: (Int) -> Unit,
     onSelectPage: (Int) -> Unit,
@@ -161,6 +159,7 @@ fun VisualCustomizeHubSheet(
     onClockStyleChange: (ClockStyle) -> Unit,
     onEnterHomeEditMode: () -> Unit,
     onAccentChange: (LauncherAccent) -> Unit,
+    onCustomAccentChange: (Long, Long, Boolean) -> Unit,
     onUpdateEmblem: (String, String, EmblemStyle) -> Unit,
     onCustomizeAppClick: (InstalledApp) -> Unit,
     onDismiss: () -> Unit
@@ -274,6 +273,8 @@ fun VisualCustomizeHubSheet(
                         config = config,
                         strings = strings,
                         onIconColorThemeChange = onIconColorThemeChange,
+                        onIconCustomColorsAndGradient = onIconCustomColorsAndGradient,
+                        onCustomAccentChange = onCustomAccentChange,
                         onIconShapeChange = onIconShapeChange,
                         onIconSizeChange = onIconSizeChange
                     )
@@ -453,6 +454,8 @@ private fun HubAppsAndFoldersTab(
                         iconColorTheme = config.iconColorTheme,
                         customBgHex = config.customIconBgHex,
                         customFgHex = config.customIconFgHex,
+                        customBgEndHex = config.customIconBgEndHex,
+                        isIconGradientEnabled = config.isIconGradientEnabled,
                         override = config.customAppOverrides[app.packageName],
                         isLiquidGlass = config.isLiquidGlassEnabled,
                         iconSize = 46.dp,
@@ -563,6 +566,8 @@ private fun HubIconColorsTab(
     config: LauncherConfig,
     strings: AppStrings,
     onIconColorThemeChange: (IconColorTheme, Long?, Long?) -> Unit,
+    onIconCustomColorsAndGradient: (Long, Long, Long, Boolean) -> Unit,
+    onCustomAccentChange: (Long, Long, Boolean) -> Unit,
     onIconShapeChange: (IconShapeStyle) -> Unit,
     onIconSizeChange: (Int) -> Unit
 ) {
@@ -613,6 +618,8 @@ private fun HubIconColorsTab(
                         theme = theme,
                         selected = config.iconColorTheme == theme,
                         customBgHex = config.customIconBgHex,
+                        customBgEndHex = config.customIconBgEndHex,
+                        isIconGradientEnabled = config.isIconGradientEnabled,
                         customFgHex = config.customIconFgHex,
                         isLiquidGlass = config.isLiquidGlassEnabled,
                         label = strings.iconThemeName(theme),
@@ -640,6 +647,8 @@ private fun HubIconColorsTab(
                         theme = theme,
                         selected = config.iconColorTheme == theme,
                         customBgHex = config.customIconBgHex,
+                        customBgEndHex = config.customIconBgEndHex,
+                        isIconGradientEnabled = config.isIconGradientEnabled,
                         customFgHex = config.customIconFgHex,
                         isLiquidGlass = config.isLiquidGlassEnabled,
                         label = strings.iconThemeName(theme),
@@ -650,32 +659,13 @@ private fun HubIconColorsTab(
             }
         }
 
-        if (config.iconColorTheme == IconColorTheme.CUSTOM_DUOTONE) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(strings.customBgColor, style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                IconColorSwatches.forEach { hex ->
-                    ColorSwatchCircle(
-                        color = Color(hex),
-                        selected = config.customIconBgHex == hex,
-                        onClick = { onIconColorThemeChange(IconColorTheme.CUSTOM_DUOTONE, hex, config.customIconFgHex) }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(strings.customFgColor, style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                IconColorSwatches.forEach { hex ->
-                    ColorSwatchCircle(
-                        color = Color(hex),
-                        selected = config.customIconFgHex == hex,
-                        onClick = { onIconColorThemeChange(IconColorTheme.CUSTOM_DUOTONE, config.customIconBgHex, hex) }
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+        CustomColorGradientStudio(
+            config = config,
+            strings = strings,
+            onIconCustomColorsChange = onIconCustomColorsAndGradient,
+            onThemeAccentCustomChange = onCustomAccentChange
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
         Text(strings.iconShapeTitle, style = MaterialTheme.typography.labelLarge)
@@ -764,6 +754,8 @@ private fun IconThemeOptionCard(
     theme: IconColorTheme,
     selected: Boolean,
     customBgHex: Long,
+    customBgEndHex: Long,
+    isIconGradientEnabled: Boolean,
     customFgHex: Long,
     isLiquidGlass: Boolean,
     label: String,
@@ -771,6 +763,13 @@ private fun IconThemeOptionCard(
     modifier: Modifier = Modifier
 ) {
     val bgPreview = if (theme == IconColorTheme.CUSTOM_DUOTONE) Color(customBgHex) else Color(theme.bgHex)
+    val bgPreviewBrush = when {
+        theme == IconColorTheme.ORIGINAL -> Brush.linearGradient(listOf(Color(0xFF283044), Color(0xFF283044)))
+        theme == IconColorTheme.PRISM_GLASS -> Brush.linearGradient(listOf(Color(0xFF0A101E), Color(0xFF0A101E)))
+        theme == IconColorTheme.CUSTOM_DUOTONE && isIconGradientEnabled ->
+            Brush.linearGradient(listOf(Color(customBgHex), Color(customBgEndHex)))
+        else -> Brush.linearGradient(listOf(bgPreview, bgPreview))
+    }
     val fgPreview = if (theme == IconColorTheme.CUSTOM_DUOTONE) Color(customFgHex) else Color(theme.fgHex)
     val previewGlyph = when (theme) {
         IconColorTheme.SPIDER_CRIMSON -> Icons.Rounded.AutoAwesome
@@ -802,13 +801,7 @@ private fun IconThemeOptionCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        when (theme) {
-                            IconColorTheme.ORIGINAL -> Color(0xFF283044)
-                            IconColorTheme.PRISM_GLASS -> Color(0xFF0A101E)
-                            else -> bgPreview
-                        }
-                    )
+                    .background(bgPreviewBrush)
                     .border(
                         width = if (theme == IconColorTheme.PRISM_GLASS) 0.dp else 1.4.dp,
                         color = if (theme == IconColorTheme.ORIGINAL) Color.White.copy(0.2f) else fgPreview,
@@ -1040,27 +1033,36 @@ private fun HubPagesAndLookTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Clock Style Picker (Minimal / Tall Condensed Glass / Bubbly Overlap Glass)
-        Text(strings.clockStyleTitle, style = MaterialTheme.typography.labelLarge)
+        // Clock Style Picker (13 Modern Web-Researched & Signature Clocks)
+        val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(strings.clockStyleTitle, style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = "${ClockStyle.entries.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .testTag("clock_styles_row")
         ) {
             ClockStyle.entries.forEach { style ->
                 val selected = config.clockStyle == style
-                val previewBrush = Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f),
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
-                    )
-                )
                 LiquidGlassSurface(
                     shape = RoundedCornerShape(18.dp),
                     isLiquidGlass = config.isLiquidGlassEnabled,
                     onClick = { onClockStyleChange(style) },
                     modifier = Modifier
-                        .weight(1f)
+                        .width(116.dp)
                         .then(
                             if (selected) Modifier.border(
                                 2.dp,
@@ -1075,40 +1077,9 @@ private fun HubPagesAndLookTab(
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 10.dp)
+                            .padding(horizontal = 8.dp, vertical = 10.dp)
                     ) {
-                        val previewTextStyle = when (style) {
-                            ClockStyle.MINIMAL_CLEAN -> TextStyle(
-                                fontFamily = SpaceGroteskFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            ClockStyle.TALL_CONDENSED_GLASS -> TextStyle(
-                                fontFamily = SixCapsFontFamily,
-                                fontSize = 36.sp,
-                                lineHeight = 36.sp,
-                                letterSpacing = 1.sp,
-                                brush = previewBrush
-                            )
-                            ClockStyle.BUBBLY_OVERLAP_GLASS -> TextStyle(
-                                fontFamily = FredokaFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp,
-                                letterSpacing = (-3).sp,
-                                brush = previewBrush
-                            )
-                        }
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.height(38.dp)
-                        ) {
-                            Text(
-                                text = "12:00",
-                                style = previewTextStyle,
-                                maxLines = 1
-                            )
-                        }
+                        ClockStylePreviewSample(style = style, isDark = isDark)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = strings.clockStyleName(style),
@@ -1246,7 +1217,7 @@ private fun HubPagesAndLookTab(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
             LauncherAccent.entries.forEach { acc ->
                 FilterChip(
-                    selected = config.accent == acc,
+                    selected = !config.useCustomAccent && config.accent == acc,
                     onClick = { onAccentChange(acc) },
                     label = { Text(strings.accentName(acc)) }
                 )
@@ -1548,6 +1519,8 @@ fun FolderEditorDialog(
     iconColorTheme: IconColorTheme,
     customBgHex: Long,
     customFgHex: Long,
+    customBgEndHex: Long = 0xFF2B0F1CL,
+    isIconGradientEnabled: Boolean = true,
     overrides: Map<String, CustomAppOverride>,
     isLiquidGlass: Boolean = true,
     strings: AppStrings,
@@ -1619,6 +1592,8 @@ fun FolderEditorDialog(
                                     iconColorTheme = iconColorTheme,
                                     customBgHex = customBgHex,
                                     customFgHex = customFgHex,
+                                    customBgEndHex = customBgEndHex,
+                                    isIconGradientEnabled = isIconGradientEnabled,
                                     override = overrides[app.packageName],
                                     isLiquidGlass = isLiquidGlass,
                                     iconSize = 54.dp,
@@ -1708,6 +1683,8 @@ fun FolderEditorDialog(
                                     iconColorTheme = iconColorTheme,
                                     customBgHex = customBgHex,
                                     customFgHex = customFgHex,
+                                    customBgEndHex = customBgEndHex,
+                                    isIconGradientEnabled = isIconGradientEnabled,
                                     override = overrides[app.packageName],
                                     isLiquidGlass = isLiquidGlass,
                                     iconSize = 34.dp,

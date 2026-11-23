@@ -1,6 +1,7 @@
 package com.example.data
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -25,6 +26,7 @@ import com.example.model.LauncherConfig
 import com.example.model.MAX_HOME_PAGES
 import com.example.model.MAX_ICON_SIZE_DP
 import com.example.model.MIN_ICON_SIZE_DP
+import com.example.model.PcExeShortcut
 import com.example.model.PhotoFrameStyle
 import com.example.model.ThemeMode
 import com.example.model.WallpaperChoice
@@ -45,6 +47,10 @@ class LauncherPreferencesRepository(private val context: Context) {
         val IS_LIQUID_GLASS_ENABLED = booleanPreferencesKey("is_liquid_glass_enabled")
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val ACCENT = stringPreferencesKey("accent")
+        val USE_CUSTOM_ACCENT = booleanPreferencesKey("use_custom_accent")
+        val CUSTOM_ACCENT_HEX = longPreferencesKey("custom_accent_hex")
+        val CUSTOM_ACCENT_END_HEX = longPreferencesKey("custom_accent_end_hex")
+        val IS_ACCENT_GRADIENT = booleanPreferencesKey("is_accent_gradient")
         val WALLPAPER = stringPreferencesKey("wallpaper")
         val CUSTOM_WALLPAPER_PATH = stringPreferencesKey("custom_wallpaper_path")
         val CUSTOM_VIDEO_WALLPAPER_PATH = stringPreferencesKey("custom_video_wallpaper_path")
@@ -52,6 +58,8 @@ class LauncherPreferencesRepository(private val context: Context) {
         val HOME_ICON_SIZE_DP = intPreferencesKey("home_icon_size_dp")
         val ICON_COLOR_THEME = stringPreferencesKey("icon_color_theme")
         val CUSTOM_ICON_BG = longPreferencesKey("custom_icon_bg")
+        val CUSTOM_ICON_BG_END = longPreferencesKey("custom_icon_bg_end")
+        val IS_ICON_GRADIENT = booleanPreferencesKey("is_icon_gradient")
         val CUSTOM_ICON_FG = longPreferencesKey("custom_icon_fg")
         val APP_OVERRIDES_JSON = stringPreferencesKey("app_overrides_json")
         val EMBLEM_CHAR = stringPreferencesKey("emblem_char")
@@ -63,6 +71,9 @@ class LauncherPreferencesRepository(private val context: Context) {
         val PAGES_JSON = stringPreferencesKey("pages_json")
         val INITIALIZED_DEFAULTS = booleanPreferencesKey("initialized_defaults")
         val HAS_PLACED_THEMES_APP = booleanPreferencesKey("has_placed_themes_app")
+        val HAS_PLACED_PC_APP = booleanPreferencesKey("has_placed_pc_app")
+        val IS_PC_MODE = booleanPreferencesKey("is_pc_mode")
+        val PC_EXE_SHORTCUTS_JSON = stringPreferencesKey("pc_exe_shortcuts_json")
     }
 
     val configFlow: Flow<LauncherConfig> = context.launcherDataStore.data.map { prefs ->
@@ -87,6 +98,10 @@ class LauncherPreferencesRepository(private val context: Context) {
             isLiquidGlassEnabled = prefs[Keys.IS_LIQUID_GLASS_ENABLED] ?: true,
             clockStyle = clockStyle,
             accent = accent,
+            useCustomAccent = prefs[Keys.USE_CUSTOM_ACCENT] ?: false,
+            customAccentHex = prefs[Keys.CUSTOM_ACCENT_HEX] ?: 0xFFFF4D2DL,
+            customAccentEndHex = prefs[Keys.CUSTOM_ACCENT_END_HEX] ?: 0xFFFF9A44L,
+            isAccentGradientEnabled = prefs[Keys.IS_ACCENT_GRADIENT] ?: true,
             wallpaper = wallpaper,
             customWallpaperPath = prefs[Keys.CUSTOM_WALLPAPER_PATH],
             customVideoWallpaperPath = prefs[Keys.CUSTOM_VIDEO_WALLPAPER_PATH],
@@ -94,6 +109,8 @@ class LauncherPreferencesRepository(private val context: Context) {
             homeIconSizeDp = iconSizeDp,
             iconColorTheme = iconColorTheme,
             customIconBgHex = prefs[Keys.CUSTOM_ICON_BG] ?: 0xFF0A0A0DL,
+            customIconBgEndHex = prefs[Keys.CUSTOM_ICON_BG_END] ?: 0xFF2B0F1CL,
+            isIconGradientEnabled = prefs[Keys.IS_ICON_GRADIENT] ?: true,
             customIconFgHex = prefs[Keys.CUSTOM_ICON_FG] ?: 0xFFFF1E38L,
             customAppOverrides = parseAppOverridesJson(prefs[Keys.APP_OVERRIDES_JSON]),
             emblemCharacter = prefs[Keys.EMBLEM_CHAR]?.take(2)?.ifBlank { "N" } ?: "N",
@@ -104,7 +121,10 @@ class LauncherPreferencesRepository(private val context: Context) {
             photoFrameStyle = photoStyle,
             pages = parsedPages,
             hasInitializedDefaults = prefs[Keys.INITIALIZED_DEFAULTS] ?: false,
-            hasPlacedThemesApp = prefs[Keys.HAS_PLACED_THEMES_APP] ?: false
+            hasPlacedThemesApp = prefs[Keys.HAS_PLACED_THEMES_APP] ?: false,
+            hasPlacedPcApp = prefs[Keys.HAS_PLACED_PC_APP] ?: false,
+            isPcMode = prefs[Keys.IS_PC_MODE] ?: false,
+            pcExeShortcuts = parseExeShortcutsJson(prefs[Keys.PC_EXE_SHORTCUTS_JSON])
         )
     }
 
@@ -121,7 +141,24 @@ class LauncherPreferencesRepository(private val context: Context) {
     }
 
     suspend fun updateAccent(accent: LauncherAccent) {
-        context.launcherDataStore.edit { it[Keys.ACCENT] = accent.name }
+        context.launcherDataStore.edit {
+            it[Keys.ACCENT] = accent.name
+            it[Keys.USE_CUSTOM_ACCENT] = false
+        }
+    }
+
+    suspend fun updateCustomAccent(
+        useCustom: Boolean,
+        startHex: Long,
+        endHex: Long,
+        gradientEnabled: Boolean
+    ) {
+        context.launcherDataStore.edit {
+            it[Keys.USE_CUSTOM_ACCENT] = useCustom
+            it[Keys.CUSTOM_ACCENT_HEX] = startHex
+            it[Keys.CUSTOM_ACCENT_END_HEX] = endHex
+            it[Keys.IS_ACCENT_GRADIENT] = gradientEnabled
+        }
     }
 
     suspend fun updateWallpaper(choice: WallpaperChoice) {
@@ -138,11 +175,19 @@ class LauncherPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateIconColorTheme(theme: IconColorTheme, customBgHex: Long? = null, customFgHex: Long? = null) {
+    suspend fun updateIconColorTheme(
+        theme: IconColorTheme,
+        customBgHex: Long? = null,
+        customFgHex: Long? = null,
+        customBgEndHex: Long? = null,
+        isGradientEnabled: Boolean? = null
+    ) {
         context.launcherDataStore.edit {
             it[Keys.ICON_COLOR_THEME] = theme.name
             if (customBgHex != null) it[Keys.CUSTOM_ICON_BG] = customBgHex
             if (customFgHex != null) it[Keys.CUSTOM_ICON_FG] = customFgHex
+            if (customBgEndHex != null) it[Keys.CUSTOM_ICON_BG_END] = customBgEndHex
+            if (isGradientEnabled != null) it[Keys.IS_ICON_GRADIENT] = isGradientEnabled
         }
     }
 
@@ -183,7 +228,8 @@ class LauncherPreferencesRepository(private val context: Context) {
     suspend fun savePages(
         pages: List<HomePageData>,
         markInitialized: Boolean = true,
-        markThemesPlaced: Boolean = false
+        markThemesPlaced: Boolean = false,
+        markPcPlaced: Boolean = false
     ) {
         context.launcherDataStore.edit {
             it[Keys.PAGES_JSON] = encodePagesJson(pages.take(MAX_HOME_PAGES))
@@ -193,6 +239,9 @@ class LauncherPreferencesRepository(private val context: Context) {
             if (markThemesPlaced) {
                 it[Keys.HAS_PLACED_THEMES_APP] = true
             }
+            if (markPcPlaced) {
+                it[Keys.HAS_PLACED_PC_APP] = true
+            }
         }
     }
 
@@ -200,6 +249,73 @@ class LauncherPreferencesRepository(private val context: Context) {
         context.launcherDataStore.edit {
             it[Keys.HAS_PLACED_THEMES_APP] = true
         }
+    }
+
+    suspend fun markPcAppPlaced() {
+        context.launcherDataStore.edit {
+            it[Keys.HAS_PLACED_PC_APP] = true
+        }
+    }
+
+    suspend fun updatePcMode(enabled: Boolean) {
+        context.launcherDataStore.edit {
+            it[Keys.IS_PC_MODE] = enabled
+        }
+    }
+
+    suspend fun savePcExeShortcuts(shortcuts: List<PcExeShortcut>) {
+        context.launcherDataStore.edit {
+            it[Keys.PC_EXE_SHORTCUTS_JSON] = encodeExeShortcutsJson(shortcuts)
+        }
+    }
+
+    suspend fun importExeEntry(uri: Uri): PcExeShortcut? = withContext(Dispatchers.IO) {
+        runCatching {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            var displayName = uri.lastPathSegment?.substringAfterLast('/') ?: "Application.exe"
+            var sizeBytes = 0L
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (nameIdx >= 0) {
+                        cursor.getString(nameIdx)?.takeIf { it.isNotBlank() }?.let { displayName = it }
+                    }
+                    if (sizeIdx >= 0) {
+                        sizeBytes = cursor.getLong(sizeIdx).coerceAtLeast(0L)
+                    }
+                }
+            }
+            PcExeShortcut(
+                id = "exe_${System.currentTimeMillis()}",
+                name = displayName,
+                uriString = uri.toString(),
+                sizeBytes = sizeBytes,
+                addedAtMillis = System.currentTimeMillis()
+            )
+        }.getOrNull()
+    }
+
+    suspend fun inspectExeHeader(uriString: String): String = withContext(Dispatchers.IO) {
+        runCatching {
+            val uri = Uri.parse(uriString)
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val header = ByteArray(64)
+                val read = input.read(header)
+                if (read >= 2 && header[0] == 'M'.code.toByte() && header[1] == 'Z'.code.toByte()) {
+                    "Valid Windows PE/MZ Executable Header (${read}B verified)"
+                } else if (read > 0) {
+                    "Executable Package Stream ($read header bytes)"
+                } else {
+                    "Empty file stream"
+                }
+            } ?: "URI shortcut ready"
+        }.getOrDefault("URI shortcut ready")
     }
 
     suspend fun importPhotoForWidget(uri: Uri): String? = withContext(Dispatchers.IO) {
@@ -379,6 +495,48 @@ class LauncherPreferencesRepository(private val context: Context) {
                     put("customLabel", ov.customLabel ?: "")
                     put("customIconPath", ov.customIconPath ?: "")
                     put("symbolPreset", ov.symbolPreset.name)
+                }
+            )
+        }
+        return array.toString()
+    }
+
+    private fun parseExeShortcutsJson(raw: String?): List<PcExeShortcut> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            buildList {
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    val id = obj.optString("id")
+                    val name = obj.optString("name")
+                    val uri = obj.optString("uriString")
+                    if (id.isNotBlank() && uri.isNotBlank()) {
+                        add(
+                            PcExeShortcut(
+                                id = id,
+                                name = name.ifBlank { "App.exe" },
+                                uriString = uri,
+                                sizeBytes = obj.optLong("sizeBytes", 0L),
+                                addedAtMillis = obj.optLong("addedAtMillis", 0L)
+                            )
+                        )
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun encodeExeShortcutsJson(shortcuts: List<PcExeShortcut>): String {
+        val array = JSONArray()
+        shortcuts.forEach { item ->
+            array.put(
+                JSONObject().apply {
+                    put("id", item.id)
+                    put("name", item.name)
+                    put("uriString", item.uriString)
+                    put("sizeBytes", item.sizeBytes)
+                    put("addedAtMillis", item.addedAtMillis)
                 }
             )
         }
