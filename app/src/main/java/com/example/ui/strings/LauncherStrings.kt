@@ -331,6 +331,16 @@ class AppStrings(private val context: Context) {
     val winWidth: String get() = context.getString(R.string.win_width)
     val winHeight: String get() = context.getString(R.string.win_height)
     val winPhotoViewer: String get() = context.getString(R.string.win_photo_viewer)
+    val winWebAppWindowTitle: String get() = context.getString(R.string.win_webapp_window_title)
+    fun winWebAppDispatched(runtime: String): String = context.getString(R.string.win_webapp_dispatched, runtime)
+    val winWebAppSandboxOpened: String get() = context.getString(R.string.win_webapp_sandbox_opened)
+    val winWebAppHtmlWarning: String get() = context.getString(R.string.win_webapp_html_warning)
+    fun winWebAppNeedWinlator(appName: String): String = context.getString(R.string.win_webapp_need_winlator, appName)
+    val winWebAppNeedPojav: String get() = context.getString(R.string.win_webapp_need_pojav)
+    val winWebAppApkGuide: String get() = context.getString(R.string.win_webapp_apk_guide)
+    val winWebAppRetryExternal: String get() = context.getString(R.string.win_webapp_retry_external)
+    val winWebAppFindRuntime: String get() = context.getString(R.string.win_webapp_find_runtime)
+    val winWebAppInspectLabel: String get() = context.getString(R.string.win_webapp_inspect_label)
 }
 
 @Composable

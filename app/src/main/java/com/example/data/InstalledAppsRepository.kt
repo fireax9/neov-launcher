@@ -606,6 +606,12 @@ class InstalledAppsRepository(private val context: Context) {
         ).any { key.contains(it) }
     }
 
+    data class ExternalExeDispatchResult(
+        val launched: Boolean,
+        val targetRuntimeName: String? = null,
+        val reason: String = ""
+    )
+
     fun findInstalledWineBridgeApps(): List<String> {
         val candidates = listOf(
             "com.winlator",
@@ -613,7 +619,10 @@ class InstalledAppsRepository(private val context: Context) {
             "org.winehq.wine",
             "com.eltechs.ed",
             "com.micewine.emu",
-            "com.xiaoji.emulator"
+            "com.xiaoji.emulator",
+            "net.kdt.pojavlaunch",
+            "net.kdt.pojavlaunch.debug",
+            "com.movtery.zalithlauncher"
         )
         return candidates.filter { pkg ->
             runCatching {
@@ -622,16 +631,108 @@ class InstalledAppsRepository(private val context: Context) {
         }
     }
 
-    fun launchExeUriExternal(uriString: String): Boolean {
-        return runCatching {
-            val uri = Uri.parse(uriString)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/x-msdownload")
+    fun launchExeUriExternal(uriString: String, fileName: String = ""): Boolean {
+        return dispatchDownloadedPackageExternal(uriString, fileName).launched
+    }
+
+    fun dispatchDownloadedPackageExternal(
+        uriString: String,
+        fileName: String = ""
+    ): ExternalExeDispatchResult {
+        val rawUri = Uri.parse(uriString)
+        val ext = fileName.substringAfterLast('.', "").lowercase().ifBlank {
+            rawUri.lastPathSegment?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        }
+        val shareUri = resolveShareableContentUri(rawUri) ?: rawUri
+        val mime = when (ext) {
+            "apk" -> "application/vnd.android.package-archive"
+            "jar" -> "application/java-archive"
+            "bat", "cmd", "txt" -> "text/plain"
+            "msi" -> "application/x-msi"
+            else -> "application/x-msdownload"
+        }
+
+        // 1. For Android APKs, try launching Android's package installer via FileProvider URI
+        if (ext == "apk") {
+            val apkIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(shareUri, mime)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(intent)
-            true
-        }.getOrDefault(false)
+            val resolved = runCatching { context.packageManager.resolveActivity(apkIntent, 0) }.getOrNull()
+            if (resolved != null) {
+                val started = runCatching {
+                    context.startActivity(apkIntent)
+                    true
+                }.getOrDefault(false)
+                if (started) {
+                    return ExternalExeDispatchResult(
+                        launched = true,
+                        targetRuntimeName = resolved.loadLabel(context.packageManager)?.toString() ?: "Android Installer"
+                    )
+                }
+            }
+        }
+
+        // 2. For .exe / .msi / .jar, check if a dedicated Windows/Java compatibility runtime (Winlator, Wine, PojavLauncher) handles VIEW
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(shareUri, mime)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val handlerInfo = runCatching { context.packageManager.resolveActivity(viewIntent, 0) }.getOrNull()
+        val handlerPkg = handlerInfo?.activityInfo?.packageName
+        if (handlerPkg != null && handlerPkg != context.packageName) {
+            val started = runCatching {
+                context.startActivity(viewIntent)
+                true
+            }.getOrDefault(false)
+            if (started) {
+                return ExternalExeDispatchResult(
+                    launched = true,
+                    targetRuntimeName = handlerInfo.loadLabel(context.packageManager)?.toString() ?: handlerPkg
+                )
+            }
+        }
+
+        // 3. Fallback: if an installed bridge (PojavLauncher for .jar or Winlator/Wine for .exe) exists, open that bridge directly
+        val installedBridges = findInstalledWineBridgeApps()
+        val preferredBridge = when (ext) {
+            "jar" -> installedBridges.firstOrNull { it.contains("pojav") || it.contains("zalith") }
+            else -> installedBridges.firstOrNull { it.contains("winlator") || it.contains("wine") || it.contains("micewine") || it.contains("eltechs") }
+        }
+        if (preferredBridge != null) {
+            val bridgeIntent = runCatching {
+                context.packageManager.getLaunchIntentForPackage(preferredBridge)?.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    putExtra(Intent.EXTRA_STREAM, shareUri)
+                }
+            }.getOrNull()
+            if (bridgeIntent != null && runCatching { context.startActivity(bridgeIntent); true }.getOrDefault(false)) {
+                return ExternalExeDispatchResult(launched = true, targetRuntimeName = preferredBridge)
+            }
+        }
+
+        return ExternalExeDispatchResult(
+            launched = false,
+            reason = if (ext == "jar") {
+                "No Java/Minecraft runtime (e.g. PojavLauncher) installed"
+            } else {
+                "No Windows x86/x64 runtime (e.g. Winlator or Wine) installed"
+            }
+        )
+    }
+
+    private fun resolveShareableContentUri(uri: Uri): Uri? {
+        if (uri.scheme != "file") return uri
+        val path = uri.path ?: return null
+        val file = java.io.File(path)
+        if (!file.exists()) return null
+        return runCatching {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        }.getOrNull()
     }
 
     companion object {

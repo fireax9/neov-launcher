@@ -9,11 +9,13 @@ import android.view.KeyEvent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.R
+import com.example.data.BatteryMonitorState
 import com.example.data.InstalledAppsRepository
 import com.example.data.LauncherPreferencesRepository
 import com.example.data.SystemTelemetryRepository
 import com.example.model.ActiveOverlay
 import com.example.model.AppCategory
+import com.example.ui.components.pc.WebAppLaunchReport
 import com.example.model.AppFolder
 import com.example.model.AppSymbolPreset
 import com.example.model.BatteryTelemetry
@@ -58,6 +60,7 @@ data class LauncherUiState(
     val isDefaultLauncher: Boolean = false,
     val gateCompleted: Boolean = false,
     val battery: BatteryTelemetry = BatteryTelemetry(),
+    val batteryMonitor: BatteryMonitorState = BatteryMonitorState(),
     val device: DeviceTelemetry = DeviceTelemetry(),
     val now: LocalDateTime = LocalDateTime.now(),
     val activeOverlay: ActiveOverlay = ActiveOverlay.NONE,
@@ -129,10 +132,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val events = _events.asSharedFlow()
 
+    private val _webAppLaunchEvents = MutableSharedFlow<WebAppLaunchReport>(extraBufferCapacity = 4)
+    val webAppLaunchEvents = _webAppLaunchEvents.asSharedFlow()
+
+    val batteryMonitorState: StateFlow<BatteryMonitorState> = telemetryRepo.observeBatteryMonitorState()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = BatteryMonitorState()
+        )
+
     val uiState: StateFlow<LauncherUiState> = combine(
         prefsRepo.configFlow,
         appsRepo.observeInstalledApps(),
-        telemetryRepo.observeBatteryTelemetry(),
+        batteryMonitorState,
         telemetryRepo.observeDeviceTelemetry(),
         telemetryRepo.observeClock(),
         interactionState
@@ -140,7 +153,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val rawConfig = values[0] as LauncherConfig
         @Suppress("UNCHECKED_CAST")
         val apps = values[1] as List<InstalledApp>
-        val battery = values[2] as BatteryTelemetry
+        val monitorState = values[2] as BatteryMonitorState
+        val battery = monitorState.toBatteryTelemetry()
         val device = values[3] as DeviceTelemetry
         val now = values[4] as LocalDateTime
         val local = values[5] as InteractionState
@@ -180,6 +194,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             isDefaultLauncher = local.isDefaultLauncher,
             gateCompleted = local.gateCompleted,
             battery = battery,
+            batteryMonitor = monitorState,
             device = device.copy(
                 mediaVolumePercent = local.overrideVolumePercent ?: device.mediaVolumePercent
             ),
@@ -210,6 +225,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var builtInsPlacementTriggered = false
 
     init {
+        telemetryRepo.startBatteryMonitorService()
         viewModelScope.launch {
             val bridges = appsRepo.findInstalledWineBridgeApps()
             interactionState.update { it.copy(wineBridgePackages = bridges) }
@@ -520,21 +536,62 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun runExeShortcut(shortcut: PcExeShortcut) {
         viewModelScope.launch {
             val headerStatus = prefsRepo.inspectExeHeader(shortcut.uriString)
-            val launchedExternal = appsRepo.launchExeUriExternal(shortcut.uriString)
+            val dispatch = appsRepo.dispatchDownloadedPackageExternal(shortcut.uriString, shortcut.name)
             val bridges = appsRepo.findInstalledWineBridgeApps()
-            val entry = if (launchedExternal) {
-                "[EXEC] Dispatched ${shortcut.name} via external Wine/Bridge ($headerStatus)"
-            } else if (bridges.isNotEmpty()) {
-                "[EXEC] ${shortcut.name} ready — $headerStatus. Detected bridge: ${bridges.first()}"
-            } else {
-                "[WIN11 SHELL] Loaded ${shortcut.name} (${formatBytes(shortcut.sizeBytes)}) • $headerStatus"
+            val ext = shortcut.name.substringAfterLast('.', "exe").lowercase()
+            val appCtx = getApplication<Application>()
+
+            val statusHeadline = when {
+                dispatch.launched -> appCtx.getString(R.string.win_webapp_dispatched, dispatch.targetRuntimeName ?: "External Runtime")
+                else -> appCtx.getString(R.string.win_webapp_sandbox_opened)
             }
+            val explanation = when {
+                dispatch.launched -> statusHeadline
+                headerStatus.contains("HTML", ignoreCase = true) -> appCtx.getString(R.string.win_webapp_html_warning)
+                ext == "apk" -> appCtx.getString(R.string.win_webapp_apk_guide)
+                ext == "jar" -> appCtx.getString(R.string.win_webapp_need_pojav)
+                else -> appCtx.getString(R.string.win_webapp_need_winlator, shortcut.name)
+            }
+
+            val trace = buildList {
+                add("[INIT] Package: ${shortcut.name} (${formatBytes(shortcut.sizeBytes)})")
+                add("[HEADER] $headerStatus")
+                add("[BRIDGES] ${if (bridges.isEmpty()) "None detected (No Winlator / Wine / PojavLauncher installed)" else bridges.joinToString()}")
+                if (dispatch.launched) {
+                    add("[EXEC] Handed off via FileProvider -> ${dispatch.targetRuntimeName}")
+                } else {
+                    add("[STATUS] ${dispatch.reason}")
+                }
+            }
+
+            val report = WebAppLaunchReport(
+                appName = shortcut.name,
+                uriString = shortcut.uriString,
+                filePath = Uri.parse(shortcut.uriString).takeIf { it.scheme == "file" }?.path,
+                sizeBytes = shortcut.sizeBytes,
+                extension = ext,
+                headerInspection = headerStatus,
+                dispatchedExternally = dispatch.launched,
+                externalRuntimeName = dispatch.targetRuntimeName,
+                installedBridges = bridges,
+                statusHeadline = statusHeadline,
+                explanation = explanation,
+                traceLines = trace
+            )
+
+            val entry = if (dispatch.launched) {
+                "[EXEC] Dispatched ${shortcut.name} via ${dispatch.targetRuntimeName} ($headerStatus)"
+            } else {
+                "[WIN11 RUNTIME] Opened ${shortcut.name} (${formatBytes(shortcut.sizeBytes)}) • $headerStatus"
+            }
+
             interactionState.update {
                 it.copy(
                     wineBridgePackages = bridges,
                     pcExecutionLogs = (listOf(entry) + it.pcExecutionLogs).take(20)
                 )
             }
+            _webAppLaunchEvents.tryEmit(report)
         }
     }
 

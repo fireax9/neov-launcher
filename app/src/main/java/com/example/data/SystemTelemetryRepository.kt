@@ -13,8 +13,8 @@ import android.os.StatFs
 import android.os.SystemClock
 import android.view.KeyEvent
 import com.example.model.BatteryTelemetry
-import com.example.model.ChargingSource
 import com.example.model.DeviceTelemetry
+import com.example.service.BatteryMonitorService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -22,64 +22,75 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
 
 class SystemTelemetryRepository(private val context: Context) {
 
-    fun observeBatteryTelemetry(): Flow<BatteryTelemetry> = callbackFlow {
-        fun parseIntent(intent: Intent?): BatteryTelemetry {
-            if (intent == null) return BatteryTelemetry()
-            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
-            val pct = if (level >= 0) ((level * 100f) / scale).roundToInt().coerceIn(0, 100) else 80
+    val batteryStore = BatteryMonitorDataStore(context.applicationContext)
 
-            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == BatteryManager.BATTERY_STATUS_FULL
+    fun startBatteryMonitorService() {
+        runCatching {
+            val intent = Intent(context.applicationContext, BatteryMonitorService::class.java)
+            context.applicationContext.startService(intent)
+        }
+    }
 
-            val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
-            val source = when {
-                !isCharging -> ChargingSource.BATTERY
-                plugged == BatteryManager.BATTERY_PLUGGED_AC -> ChargingSource.AC
-                plugged == BatteryManager.BATTERY_PLUGGED_USB -> ChargingSource.USB
-                plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS -> ChargingSource.WIRELESS
-                else -> ChargingSource.AC
+    fun stopBatteryMonitorService() {
+        runCatching {
+            val intent = Intent(context.applicationContext, BatteryMonitorService::class.java)
+            context.applicationContext.stopService(intent)
+        }
+    }
+
+    fun observeBatteryMonitorState(): Flow<BatteryMonitorState> {
+        val liveSyncFlow = callbackFlow {
+            val scope = this
+            val initialSnapshot = batteryStore.readCurrentSnapshot(serviceActive = true)
+            scope.launch(Dispatchers.IO) {
+                batteryStore.saveSnapshot(initialSnapshot)
+            }
+            trySend(initialSnapshot)
+
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context?, intent: Intent?) {
+                    val snapshot = when (intent?.action) {
+                        Intent.ACTION_BATTERY_CHANGED -> batteryStore.parseIntent(intent, serviceActive = true)
+                        Intent.ACTION_POWER_CONNECTED -> batteryStore.readCurrentSnapshot(serviceActive = true).copy(isCharging = true)
+                        Intent.ACTION_POWER_DISCONNECTED -> batteryStore.readCurrentSnapshot(serviceActive = true).copy(isCharging = false)
+                        else -> batteryStore.readCurrentSnapshot(serviceActive = true)
+                    }
+                    scope.launch(Dispatchers.IO) {
+                        batteryStore.saveSnapshot(snapshot)
+                    }
+                }
             }
 
-            val tempTenths = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 300)
-            val voltageMv = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 4100)
-
-            return BatteryTelemetry(
-                level = pct,
-                isCharging = isCharging,
-                source = source,
-                temperatureCelsius = tempTenths / 10f,
-                voltageVolts = voltageMv / 1000f
-            )
-        }
-
-        val initial = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        trySend(parseIntent(initial))
-
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                trySend(parseIntent(intent))
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_BATTERY_CHANGED)
+                addAction(Intent.ACTION_POWER_CONNECTED)
+                addAction(Intent.ACTION_POWER_DISCONNECTED)
             }
-        }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                context.registerReceiver(receiver, filter)
+            }
 
-        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            context.registerReceiver(receiver, filter)
-        }
+            awaitClose {
+                runCatching { context.unregisterReceiver(receiver) }
+            }
+        }.flowOn(Dispatchers.IO)
 
-        awaitClose {
-            runCatching { context.unregisterReceiver(receiver) }
-        }
-    }.flowOn(Dispatchers.IO)
+        return merge(batteryStore.monitorStateFlow, liveSyncFlow)
+    }
+
+    fun observeBatteryTelemetry(): Flow<BatteryTelemetry> =
+        observeBatteryMonitorState().map { it.toBatteryTelemetry() }
 
     fun observeDeviceTelemetry(): Flow<DeviceTelemetry> = flow {
         while (true) {

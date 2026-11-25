@@ -282,6 +282,13 @@ fun ChromePcWindowBody(
         }
     }
 
+    LaunchedEffect(initialUrl) {
+        val clean = initialUrl.trim()
+        if (clean.isNotBlank() && clean != "chrome://newtab" && activeTab.url != clean) {
+            navigateActiveTab(clean)
+        }
+    }
+
     val tabBarBg = if (effectiveDarkTheme) Color(0xFF1F2229) else Color(0xFFDEE3EC)
     val toolbarBg = if (effectiveDarkTheme) Color(0xFF2B2F3A) else Color(0xFFF6F8FC)
     val omniboxBg = if (effectiveDarkTheme) Color(0xFF1B1E25) else Color.White

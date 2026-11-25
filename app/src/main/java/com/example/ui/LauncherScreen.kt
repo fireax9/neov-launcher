@@ -67,6 +67,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,7 +89,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.BatteryMonitorState
 import com.example.data.PcFileSystemManager
+import com.example.data.rememberBatteryMonitorState
 import com.example.model.ActiveOverlay
 import com.example.model.HomePageData
 import com.example.model.HomeWidgetId
@@ -125,6 +128,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LauncherRoot(viewModel: LauncherViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val batteryMonitorComposeState = rememberBatteryMonitorState(viewModel.batteryMonitorState)
     val config = state.config
     val strings = rememberAppStrings()
     val systemDark = isSystemInDarkTheme()
@@ -272,7 +276,12 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
             Scaffold(
                 containerColor = Color.Transparent,
                 contentWindowInsets = if (config.isPcMode) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
-                snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+                snackbarHost = {
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.padding(bottom = if (config.isPcMode) 60.dp else 0.dp)
+                    )
+                }
             ) { _ ->
                 Box(
                     modifier = Modifier
@@ -300,7 +309,8 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                             onRunExeShortcut = { viewModel.runExeShortcut(it) },
                             onRemoveExeShortcut = { viewModel.removeExeShortcut(it) },
                             onToggleThemeMode = { viewModel.setThemeMode(it) },
-                            onOpenSystemAction = { viewModel.openSystemAction(it) }
+                            onOpenSystemAction = { viewModel.openSystemAction(it) },
+                            webAppLaunchEvents = viewModel.webAppLaunchEvents
                         )
                     } else {
                         LauncherWallpaperBackground(
@@ -330,6 +340,7 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
                                         pageIndex = pageIndex,
                                         pageData = pageData,
                                         state = state,
+                                        batteryMonitorState = batteryMonitorComposeState,
                                         strings = strings,
                                         onLaunchApp = { viewModel.launchApp(it, hostActivity) },
                                         onCustomizeApp = { viewModel.openAppCustomizer(it) },
@@ -678,6 +689,7 @@ private fun HomePageContent(
     pageIndex: Int,
     pageData: HomePageData,
     state: com.example.viewmodel.LauncherUiState,
+    batteryMonitorState: State<BatteryMonitorState>,
     strings: AppStrings,
     onLaunchApp: (com.example.model.InstalledApp) -> Unit,
     onCustomizeApp: (com.example.model.InstalledApp) -> Unit,
@@ -837,7 +849,7 @@ private fun HomePageContent(
                 }
                 HomeWidgetId.CHARGING_POD -> {
                     ChargingPodWidget(
-                        battery = state.battery,
+                        battery = batteryMonitorState.value.toBatteryTelemetry(),
                         isLiquidGlass = config.isLiquidGlassEnabled,
                         strings = strings,
                         onOpenBatterySettings = onOpenBatterySettings,

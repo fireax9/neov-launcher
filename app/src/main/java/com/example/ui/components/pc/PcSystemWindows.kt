@@ -480,7 +480,7 @@ fun ThisPcExplorerBody(
 
 private fun iconForFileEntry(entry: PcFileEntry): ImageVector = when {
     entry.isDirectory -> Icons.Rounded.Folder
-    entry.extension in setOf("exe", "msi", "bat") -> Icons.Rounded.Terminal
+    entry.extension in setOf("exe", "msi", "bat", "jar", "apk") -> Icons.Rounded.Terminal
     entry.extension in setOf("png", "jpg", "jpeg", "webp", "bmp") -> Icons.Rounded.Image
     entry.extension in setOf("txt", "log", "md", "json", "xml", "cfg") -> Icons.Rounded.Description
     else -> Icons.Rounded.InsertDriveFile
@@ -489,6 +489,7 @@ private fun iconForFileEntry(entry: PcFileEntry): ImageVector = when {
 private fun tintForFileEntry(entry: PcFileEntry): Color = when {
     entry.isDirectory -> Color(0xFFFACC15)
     entry.extension in setOf("exe", "msi", "bat") -> Color(0xFF38BDF8)
+    entry.extension in setOf("jar", "apk") -> Color(0xFF4ADE80)
     entry.extension in setOf("png", "jpg", "jpeg", "webp", "bmp") -> Color(0xFFA78BFA)
     entry.extension in setOf("txt", "log", "md", "json", "xml", "cfg") -> Win11Sky
     else -> Color(0xFF94A3B8)
@@ -508,11 +509,11 @@ fun ExeRunnerBody(
     onOpenBuiltInExe: (Win11WindowKind) -> Unit
 ) {
     val downloadedExes = remember(exeShortcuts, logs) {
-        fileManager.listDownloadFiles().filter { !it.isDirectory && it.extension in setOf("exe", "msi", "bat") }
+        fileManager.listDownloadFiles().filter { !it.isDirectory && it.extension in setOf("exe", "msi", "bat", "jar", "apk") }
     }
 
     LazyColumn(
-        contentPadding = PaddingValues(14.dp),
+        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize().testTag("win11_exe_runner_body")
     ) {
@@ -576,6 +577,7 @@ fun ExeRunnerBody(
             }
             items(downloadedExes, key = { it.relativePath }) { dlExe ->
                 Surface(
+                    onClick = { onOpenDownloadedExe(dlExe) },
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth()
@@ -590,7 +592,10 @@ fun ExeRunnerBody(
                             Text(dlExe.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(formatFileSize(dlExe.sizeBytes), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        TextButton(onClick = { onOpenDownloadedExe(dlExe) }) {
+                        TextButton(
+                            onClick = { onOpenDownloadedExe(dlExe) },
+                            modifier = Modifier.testTag("run_dl_exe_${dlExe.name}")
+                        ) {
                             Text(strings.winRunExe, color = Win11Sky)
                         }
                     }
@@ -627,7 +632,10 @@ fun ExeRunnerBody(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        TextButton(onClick = { onRunExeShortcut(exe) }) {
+                        TextButton(
+                            onClick = { onRunExeShortcut(exe) },
+                            modifier = Modifier.testTag("run_shortcut_exe_${exe.name}")
+                        ) {
                             Text(strings.winRunExe, color = Win11Sky)
                         }
                         IconButton(onClick = { onRemoveExeShortcut(exe.id) }) {

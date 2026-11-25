@@ -106,6 +106,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.data.PcFileEntry
 import com.example.data.PcFileSystemManager
 import com.example.model.PcExeShortcut
@@ -120,11 +121,15 @@ import com.example.ui.components.pc.PcFloatingWindowState
 import com.example.ui.components.pc.PhotoViewerExeBody
 import com.example.ui.components.pc.TaskManagerExeBody
 import com.example.ui.components.pc.ThisPcExplorerBody
+import com.example.ui.components.pc.WebAppLaunchReport
+import com.example.ui.components.pc.WebAppRuntimeWindowBody
 import com.example.ui.components.pc.Win11SettingsBody
 import com.example.ui.components.pc.Win11WindowKind
 import com.example.ui.strings.AppStrings
 import com.example.ui.theme.SpaceGroteskFontFamily
 import com.example.viewmodel.LauncherUiState
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import java.io.File
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -209,6 +214,7 @@ fun Windows11DesktopRoot(
     onRemoveExeShortcut: (String) -> Unit,
     onToggleThemeMode: (ThemeMode) -> Unit,
     onOpenSystemAction: (String) -> Unit,
+    webAppLaunchEvents: SharedFlow<WebAppLaunchReport> = MutableSharedFlow(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -235,6 +241,7 @@ fun Windows11DesktopRoot(
             Win11WindowKind.CHROME_PC -> strings.winChromeApp
             Win11WindowKind.THIS_PC -> strings.winThisPc
             Win11WindowKind.EXE_RUNNER -> strings.winExeRunner
+            Win11WindowKind.WEB_APP_RUNNER -> strings.winWebAppWindowTitle
             Win11WindowKind.WIN_SETTINGS -> strings.winSettings
             Win11WindowKind.NOTEPAD_EXE -> strings.winNotepadApp
             Win11WindowKind.CALCULATOR_EXE -> strings.winCalcApp
@@ -248,7 +255,9 @@ fun Windows11DesktopRoot(
         kind: Win11WindowKind,
         fileToOpenPath: String? = null,
         initialExplorerPath: String = "",
-        customTitle: String? = null
+        customTitle: String? = null,
+        initialUrl: String? = null,
+        launchReport: WebAppLaunchReport? = null
     ) {
         startMenuOpen = false
         quickSettingsOpen = false
@@ -258,8 +267,10 @@ fun Windows11DesktopRoot(
             val updated = existing.copy(
                 isMinimized = false,
                 title = customTitle ?: existing.title,
+                initialUrl = initialUrl ?: existing.initialUrl,
                 fileToOpenPath = fileToOpenPath ?: existing.fileToOpenPath,
-                initialExplorerPath = initialExplorerPath.ifBlank { existing.initialExplorerPath }
+                initialExplorerPath = initialExplorerPath.ifBlank { existing.initialExplorerPath },
+                launchReport = launchReport ?: existing.launchReport
             )
             openWindows.add(updated)
             return
@@ -268,11 +279,13 @@ fun Windows11DesktopRoot(
         val defaultW = when (kind) {
             Win11WindowKind.CALCULATOR_EXE -> 290f
             Win11WindowKind.CHROME_PC, Win11WindowKind.THIS_PC -> 520f
+            Win11WindowKind.WEB_APP_RUNNER -> 480f
             else -> 460f
         }
         val defaultH = when (kind) {
             Win11WindowKind.CALCULATOR_EXE -> 320f
             Win11WindowKind.CHROME_PC, Win11WindowKind.THIS_PC -> 325f
+            Win11WindowKind.WEB_APP_RUNNER -> 325f
             else -> 295f
         }
         openWindows.add(
@@ -280,14 +293,26 @@ fun Windows11DesktopRoot(
                 instanceId = "win_${UUID.randomUUID().toString().take(8)}",
                 kind = kind,
                 title = titleForKind(kind, customTitle),
+                initialUrl = initialUrl ?: "chrome://newtab",
                 fileToOpenPath = fileToOpenPath,
                 initialExplorerPath = initialExplorerPath,
+                launchReport = launchReport,
                 offsetXDp = 96f + cascade * 24f,
                 offsetYDp = 16f + cascade * 20f,
                 widthDp = defaultW,
                 heightDp = defaultH
             )
         )
+    }
+
+    LaunchedEffect(webAppLaunchEvents) {
+        webAppLaunchEvents.collect { report ->
+            openOrFocusWindow(
+                kind = Win11WindowKind.WEB_APP_RUNNER,
+                customTitle = report.appName,
+                launchReport = report
+            )
+        }
     }
 
     fun launchShortcutOrBuiltIn(shortcut: PcExeShortcut) {
@@ -298,10 +323,7 @@ fun Windows11DesktopRoot(
             n.contains("cmd") -> openOrFocusWindow(Win11WindowKind.CMD_EXE)
             n.contains("taskmgr") -> openOrFocusWindow(Win11WindowKind.TASK_MANAGER_EXE)
             n.contains("chrome") -> openOrFocusWindow(Win11WindowKind.CHROME_PC)
-            else -> {
-                onRunExeShortcut(shortcut)
-                openOrFocusWindow(Win11WindowKind.EXE_RUNNER)
-            }
+            else -> onRunExeShortcut(shortcut)
         }
     }
 
@@ -324,8 +346,8 @@ fun Windows11DesktopRoot(
                     "taskmgr.exe" -> openOrFocusWindow(Win11WindowKind.TASK_MANAGER_EXE)
                 }
             }
-            entry.extension in setOf("exe", "msi", "bat") -> {
-                if (lowerName.contains("calc")) {
+            entry.extension in setOf("exe", "msi", "bat", "jar", "apk") -> {
+                if (lowerName.contains("calc") && entry.extension == "exe") {
                     openOrFocusWindow(Win11WindowKind.CALCULATOR_EXE)
                 } else {
                     val uri = Uri.fromFile(File(entry.absolutePath)).toString()
@@ -336,7 +358,6 @@ fun Windows11DesktopRoot(
                         sizeBytes = entry.sizeBytes
                     )
                     onRunExeShortcut(shortcut)
-                    openOrFocusWindow(Win11WindowKind.EXE_RUNNER)
                 }
             }
             entry.extension in setOf("txt", "log", "md", "json", "xml", "cfg", "ini", "csv", "html") -> {
@@ -362,7 +383,6 @@ fun Windows11DesktopRoot(
                     sizeBytes = entry.sizeBytes
                 )
                 onRunExeShortcut(shortcut)
-                openOrFocusWindow(Win11WindowKind.EXE_RUNNER)
             }
         }
     }
@@ -514,18 +534,19 @@ fun Windows11DesktopRoot(
             }
 
             // Multiple Simultaneous Draggable, Customizable-Size Floating PC Windows (Z-Ordered)
-            openWindows.filterNot { it.isMinimized }.forEach { win ->
-                val density = LocalDensity.current
-                val maxW = (workspaceWidth - 12.dp).coerceAtLeast(240.dp)
-                val maxH = (workspaceHeight - 12.dp).coerceAtLeast(210.dp)
-                val winW = if (win.isMaximized) workspaceWidth else win.widthDp.dp.coerceIn(240.dp, maxW)
-                val winH = if (win.isMaximized) workspaceHeight else win.heightDp.dp.coerceIn(210.dp, maxH)
-                val maxOffsetX = (workspaceWidth - winW).coerceAtLeast(0.dp)
-                val maxOffsetY = (workspaceHeight - winH).coerceAtLeast(0.dp)
-                val clampedX = if (win.isMaximized) 0.dp else win.offsetXDp.dp.coerceIn(0.dp, maxOffsetX)
-                val clampedY = if (win.isMaximized) 0.dp else win.offsetYDp.dp.coerceIn(0.dp, maxOffsetY)
+            openWindows.filterNot { it.isMinimized }.forEachIndexed { winIdx, win ->
+                androidx.compose.runtime.key(win.instanceId) {
+                    val density = LocalDensity.current
+                    val maxW = (workspaceWidth - 12.dp).coerceAtLeast(240.dp)
+                    val maxH = (workspaceHeight - 12.dp).coerceAtLeast(210.dp)
+                    val winW = if (win.isMaximized) workspaceWidth else win.widthDp.dp.coerceIn(240.dp, maxW)
+                    val winH = if (win.isMaximized) workspaceHeight else win.heightDp.dp.coerceIn(210.dp, maxH)
+                    val maxOffsetX = (workspaceWidth - winW).coerceAtLeast(0.dp)
+                    val maxOffsetY = (workspaceHeight - winH).coerceAtLeast(0.dp)
+                    val clampedX = if (win.isMaximized) 0.dp else win.offsetXDp.dp.coerceIn(0.dp, maxOffsetX)
+                    val clampedY = if (win.isMaximized) 0.dp else win.offsetYDp.dp.coerceIn(0.dp, maxOffsetY)
 
-                Win11MultiFloatingWindow(
+                    Win11MultiFloatingWindow(
                     window = win,
                     state = state,
                     fileManager = fileManager,
@@ -575,6 +596,9 @@ fun Windows11DesktopRoot(
                         }
                     },
                     onOpenWindowKind = { openOrFocusWindow(it) },
+                    onOpenChromeWithUrl = { url ->
+                        openOrFocusWindow(Win11WindowKind.CHROME_PC, initialUrl = url)
+                    },
                     onOpenExplorerFolder = { folder ->
                         openOrFocusWindow(Win11WindowKind.THIS_PC, initialExplorerPath = folder)
                     },
@@ -582,6 +606,16 @@ fun Windows11DesktopRoot(
                     onImportFileToFolder = onImportFileToPcFolder,
                     onPickExeFile = onPickExeFile,
                     onRunExeShortcut = onRunExeShortcut,
+                    onRetryExternalWebApp = { report ->
+                        onRunExeShortcut(
+                            PcExeShortcut(
+                                id = "retry_${report.appName.hashCode()}",
+                                name = report.appName,
+                                uriString = report.uriString,
+                                sizeBytes = report.sizeBytes
+                            )
+                        )
+                    },
                     onRemoveExeShortcut = onRemoveExeShortcut,
                     onFocusWindow = { focusWindow(it) },
                     onCloseWindowById = { closeWindow(it) },
@@ -589,6 +623,7 @@ fun Windows11DesktopRoot(
                     onToggleThemeMode = onToggleThemeMode,
                     onExitPcMode = onExitPcMode,
                     modifier = Modifier
+                        .zIndex(winIdx.toFloat())
                         .offset {
                             IntOffset(
                                 with(density) { clampedX.roundToPx() },
@@ -597,7 +632,8 @@ fun Windows11DesktopRoot(
                         }
                         .width(winW)
                         .height(winH)
-                )
+                    )
+                }
             }
 
             // Centered Windows 11 Start Menu + PC App Manager (with standalone "Launcher" return tile)
@@ -607,6 +643,7 @@ fun Windows11DesktopRoot(
                 exit = fadeOut() + slideOutVertically { it / 4 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .zIndex(1000f)
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Win11StartMenu(
@@ -643,6 +680,7 @@ fun Windows11DesktopRoot(
                 exit = fadeOut() + slideOutVertically { it / 5 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .zIndex(1001f)
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Win11QuickSettingsFlyout(
@@ -980,11 +1018,13 @@ private fun Win11MultiFloatingWindow(
     onDragDelta: (Float, Float) -> Unit,
     onResizeDelta: (Float, Float) -> Unit,
     onOpenWindowKind: (Win11WindowKind) -> Unit,
+    onOpenChromeWithUrl: (String) -> Unit,
     onOpenExplorerFolder: (String) -> Unit,
     onOpenFileEntry: (PcFileEntry) -> Unit,
     onImportFileToFolder: (String) -> Unit,
     onPickExeFile: () -> Unit,
     onRunExeShortcut: (PcExeShortcut) -> Unit,
+    onRetryExternalWebApp: (WebAppLaunchReport) -> Unit,
     onRemoveExeShortcut: (String) -> Unit,
     onFocusWindow: (String) -> Unit,
     onCloseWindowById: (String) -> Unit,
@@ -1226,6 +1266,13 @@ private fun Win11MultiFloatingWindow(
                             onOpenDownloadedExe = onOpenFileEntry,
                             onOpenBuiltInExe = onOpenWindowKind
                         )
+                        Win11WindowKind.WEB_APP_RUNNER -> WebAppRuntimeWindowBody(
+                            report = window.launchReport,
+                            strings = strings,
+                            onRetryExternal = onRetryExternalWebApp,
+                            onSearchRuntimeInChrome = onOpenChromeWithUrl,
+                            onOpenDownloadsFolder = { onOpenExplorerFolder("Downloads") }
+                        )
                         Win11WindowKind.WIN_SETTINGS -> Win11SettingsBody(
                             state = state,
                             strings = strings,
@@ -1294,6 +1341,7 @@ private fun iconForWindowKind(kind: Win11WindowKind): ImageVector = when (kind) 
     Win11WindowKind.CHROME_PC -> Icons.Rounded.Language
     Win11WindowKind.THIS_PC -> Icons.Rounded.Computer
     Win11WindowKind.EXE_RUNNER -> Icons.Rounded.Terminal
+    Win11WindowKind.WEB_APP_RUNNER -> Icons.Rounded.PlayArrow
     Win11WindowKind.WIN_SETTINGS -> Icons.Rounded.Settings
     Win11WindowKind.NOTEPAD_EXE -> Icons.Rounded.Description
     Win11WindowKind.CALCULATOR_EXE -> Icons.Rounded.Calculate
@@ -1306,6 +1354,7 @@ private fun tintForWindowKind(kind: Win11WindowKind): Color = when (kind) {
     Win11WindowKind.CHROME_PC -> Color(0xFF4285F4)
     Win11WindowKind.THIS_PC -> Win11Sky
     Win11WindowKind.EXE_RUNNER -> Color(0xFFFBBF24)
+    Win11WindowKind.WEB_APP_RUNNER -> Color(0xFF38BDF8)
     Win11WindowKind.WIN_SETTINGS -> Win11Blue
     Win11WindowKind.NOTEPAD_EXE -> Win11Sky
     Win11WindowKind.CALCULATOR_EXE -> Color(0xFF34D399)

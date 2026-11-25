@@ -1,7 +1,9 @@
 package com.example
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.os.BatteryManager
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -16,15 +18,26 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.BatteryMonitorDataStore
+import com.example.model.ChargingSource
+import com.example.service.BatteryMonitorService
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.FixMethodOrder
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.junit.runners.MethodSorters
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
+import java.io.File
 import java.util.Locale
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ExampleRobolectricTest {
@@ -309,5 +322,112 @@ class ExampleRobolectricTest {
             composeTestRule.activity.window.attributes.layoutInDisplayCutoutMode
         )
         composeTestRule.onNodeWithTag("home_clock_header").assertIsDisplayed()
+    }
+
+    @Test
+    fun batteryMonitorDataStoreAndServicePersistChargingState() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val batteryIntent = Intent(Intent.ACTION_BATTERY_CHANGED).apply {
+            putExtra(BatteryManager.EXTRA_LEVEL, 93)
+            putExtra(BatteryManager.EXTRA_SCALE, 100)
+            putExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_CHARGING)
+            putExtra(BatteryManager.EXTRA_PLUGGED, BatteryManager.BATTERY_PLUGGED_AC)
+            putExtra(BatteryManager.EXTRA_TEMPERATURE, 325)
+            putExtra(BatteryManager.EXTRA_VOLTAGE, 4210)
+        }
+        val appShadow = Shadows.shadowOf(context as android.app.Application)
+        @Suppress("DEPRECATION")
+        context.sendStickyBroadcast(batteryIntent)
+
+        val controller = Robolectric.buildService(BatteryMonitorService::class.java).create().startCommand(0, 0)
+        composeTestRule.waitForIdle()
+
+        val store = BatteryMonitorDataStore(context)
+        val parsed = store.parseIntent(batteryIntent, serviceActive = true)
+        runBlocking { store.saveSnapshot(parsed) }
+
+        val stored = runBlocking { store.monitorStateFlow.first() }
+        assertEquals(93, stored.level)
+        assertTrue(stored.isCharging)
+        assertEquals(ChargingSource.AC, stored.source)
+        assertTrue(stored.isServiceActive)
+        assertEquals(32.5f, stored.temperatureCelsius, 0.01f)
+
+        val startedIntent = appShadow.peekNextStartedService()
+        assertEquals(BatteryMonitorService::class.java.name, startedIntent?.component?.className)
+
+        controller.destroy()
+    }
+
+    @Test
+    fun webDownloadedAppOpensRuntimeWindowWithVisibleFeedback() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val downloadsDir = File(context.filesDir, "WindowsPC/Downloads").apply { mkdirs() }
+        File(downloadsDir, "SKLauncher.exe").writeBytes(
+            byteArrayOf(0x4D, 0x5A, 0x90.toByte(), 0x00, 0x50, 0x45, 0x00, 0x00)
+        )
+        File(downloadsDir, "TLauncher.jar").writeBytes(
+            byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00)
+        )
+
+        composeTestRule.waitForIdle()
+        if (composeTestRule.onAllNodesWithTag("default_launcher_gate").fetchSemanticsNodes().isNotEmpty()) {
+            composeTestRule.onNodeWithTag("skip_default_launcher_button").performClick()
+            composeTestRule.waitForIdle()
+        }
+
+        // Enter PC Mode (if not already in PC Mode)
+        if (composeTestRule.onAllNodesWithTag("windows11_desktop_root").fetchSemanticsNodes().isEmpty()) {
+            composeTestRule.onNodeWithTag("app_tile_com.nlauncher.internal.pc").performClick()
+            composeTestRule.waitForIdle()
+            composeTestRule.onNodeWithTag("confirm_pc_mode_button").performClick()
+            composeTestRule.waitForIdle()
+        }
+
+        // Open EXE Runner and scroll LazyColumn to SKLauncher.exe, then run it
+        composeTestRule.onNodeWithTag("win11_taskbar_exe").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_exe_runner_body")
+            .performScrollToNode(hasTestTag("run_dl_exe_SKLauncher.exe"))
+        composeTestRule.onNodeWithTag("run_dl_exe_SKLauncher.exe").performClick()
+        composeTestRule.waitUntil(timeoutMillis = 3000L) {
+            composeTestRule.onAllNodesWithTag("win11_window_WEB_APP_RUNNER").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.waitForIdle()
+
+        // Must open dedicated WEB_APP_RUNNER window with filename, status, explanation & runtime actions
+        composeTestRule.onNodeWithTag("win11_window_WEB_APP_RUNNER").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("win11_webapp_runtime_body").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("webapp_runtime_title").assertTextContains("SKLauncher.exe")
+        composeTestRule.onNodeWithTag("webapp_runtime_status").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("webapp_runtime_explanation").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("webapp_retry_external_button").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("webapp_find_runtime_button").performScrollTo().assertIsDisplayed()
+
+        // Switch back to EXE Runner and scroll LazyColumn to TLauncher.jar, then run it
+        composeTestRule.onNodeWithTag("win11_taskbar_exe").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_exe_runner_body")
+            .performScrollToNode(hasTestTag("run_dl_exe_TLauncher.jar"))
+        composeTestRule.onNodeWithTag("run_dl_exe_TLauncher.jar").performClick()
+        composeTestRule.waitUntil(timeoutMillis = 3000L) {
+            runCatching {
+                composeTestRule.onNodeWithTag("webapp_runtime_title").assertTextContains("TLauncher.jar")
+                true
+            }.getOrDefault(false)
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("win11_window_WEB_APP_RUNNER").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("webapp_runtime_title").assertTextContains("TLauncher.jar")
+
+        // Clicking Find Runtime opens Chrome PC directly
+        composeTestRule.onNodeWithTag("webapp_find_runtime_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("win11_window_CHROME_PC").assertIsDisplayed()
+
+        // Cleanly exit PC Mode back to Mobile Launcher
+        composeTestRule.onNodeWithTag("win11_desktop_return_launcher").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
     }
 }

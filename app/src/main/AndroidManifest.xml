@@ -9,6 +9,14 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="com.winlator" />
+        <package android:name="com.winlator.debug" />
+        <package android:name="org.winehq.wine" />
+        <package android:name="com.micewine.emu" />
+        <package android:name="com.eltechs.ed" />
+        <package android:name="net.kdt.pojavlaunch" />
+        <package android:name="net.kdt.pojavlaunch.debug" />
+        <package android:name="com.movtery.zalithlauncher" />
     </queries>
 
     <application
@@ -20,6 +28,20 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+        <service
+            android:name=".service.BatteryMonitorService"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

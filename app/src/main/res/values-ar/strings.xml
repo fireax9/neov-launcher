@@ -301,4 +301,14 @@
     <string name="win_width">العرض</string>
     <string name="win_height">الارتفاع</string>
     <string name="win_photo_viewer">الصور.exe</string>
+    <string name="win_webapp_window_title">عارض وتشغيل التطبيق</string>
+    <string name="win_webapp_dispatched">تم تشغيل التطبيق عبر المشغّل الخارجي: %1$s</string>
+    <string name="win_webapp_sandbox_opened">تم فتح الحزمة داخل نافذة توافق ويندوز 11</string>
+    <string name="win_webapp_html_warning">الملف المحمّل هو صفحة ويب HTML وليس ملف تثبيت حقيقي. يُرجى تحميل رابط ملف .exe أو .jar أو .apk المباشر.</string>
+    <string name="win_webapp_need_winlator">تطبيقات ويندوز مثل %1$s مبنية لمعالجات الكمبيوتر (x86/x64) ولا تفتح مباشرة على أندرويد إلا عبر طبقة توافق مثل Winlator أو Wine. ثبّت Winlator ثم اضغط «تشغيل بالمحاكي الخارجي» لفتحه فعلياً.</string>
+    <string name="win_webapp_need_pojav">ملفات الجافا (.jar) مثل SKLauncher و TLauncher تحتاج إلى مشغّل جافا للأندرويد مثل PojavLauncher أو ZalithLauncher لتشغيل واجهة سطح المكتب بالكامل.</string>
+    <string name="win_webapp_apk_guide">هذه الحزمة بصيغة Android APK. اضغط «تشغيل بالمحاكي الخارجي» لفتح مثبّت تطبيقات أندرويد مباشرة.</string>
+    <string name="win_webapp_retry_external">تشغيل بالمحاكي / المثبّت الخارجي</string>
+    <string name="win_webapp_find_runtime">البحث عن المشغّل في كروم</string>
+    <string name="win_webapp_inspect_label">فحص الملف وسجل التشغيل الفوري</string>
 </resources>

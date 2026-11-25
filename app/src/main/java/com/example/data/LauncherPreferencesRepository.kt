@@ -304,18 +304,54 @@ class LauncherPreferencesRepository(private val context: Context) {
     suspend fun inspectExeHeader(uriString: String): String = withContext(Dispatchers.IO) {
         runCatching {
             val uri = Uri.parse(uriString)
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                val header = ByteArray(64)
+            val stream = if (uri.scheme == "file" && uri.path != null) {
+                File(uri.path!!).takeIf { it.exists() }?.inputStream()
+            } else {
+                context.contentResolver.openInputStream(uri)
+            }
+            stream?.use { input ->
+                val header = ByteArray(512)
                 val read = input.read(header)
-                if (read >= 2 && header[0] == 'M'.code.toByte() && header[1] == 'Z'.code.toByte()) {
-                    "Valid Windows PE/MZ Executable Header (${read}B verified)"
-                } else if (read > 0) {
-                    "Executable Package Stream ($read header bytes)"
-                } else {
-                    "Empty file stream"
+                if (read <= 0) return@use "Empty file (0 B)"
+                when {
+                    read >= 2 && header[0] == 'M'.code.toByte() && header[1] == 'Z'.code.toByte() -> {
+                        val peOffset = if (read >= 64) {
+                            (header[60].toInt() and 0xFF) or
+                                ((header[61].toInt() and 0xFF) shl 8) or
+                                ((header[62].toInt() and 0xFF) shl 16) or
+                                ((header[63].toInt() and 0xFF) shl 24)
+                        } else -1
+                        val arch = if (peOffset in 64 until (read - 6) &&
+                            header[peOffset] == 'P'.code.toByte() && header[peOffset + 1] == 'E'.code.toByte()
+                        ) {
+                            val machine = (header[peOffset + 4].toInt() and 0xFF) or ((header[peOffset + 5].toInt() and 0xFF) shl 8)
+                            when (machine) {
+                                0x8664 -> "PE32+ (Windows x64)"
+                                0x014C -> "PE32 (Windows x86)"
+                                0xAA64 -> "PE32+ (Windows ARM64)"
+                                else -> "PE Executable"
+                            }
+                        } else {
+                            "Windows MZ/PE Binary"
+                        }
+                        "$arch • Verified (${read}B header)"
+                    }
+                    read >= 4 && header[0] == 'P'.code.toByte() && header[1] == 'K'.code.toByte() -> {
+                        "ZIP / Java .JAR / Android Package Archive (PK)"
+                    }
+                    else -> {
+                        val preview = String(header, 0, read.coerceAtMost(128)).trim().lowercase()
+                        if (preview.startsWith("<!doctype") || preview.startsWith("<html")) {
+                            "HTML Webpage saved instead of binary installer"
+                        } else if (uriString.lowercase().endsWith(".bat")) {
+                            "Windows Batch Script (.BAT)"
+                        } else {
+                            "Downloaded Package Stream ($read header bytes)"
+                        }
+                    }
                 }
-            } ?: "URI shortcut ready"
-        }.getOrDefault("URI shortcut ready")
+            } ?: "Downloaded File Ready"
+        }.getOrDefault("Downloaded File Ready")
     }
 
     suspend fun importPhotoForWidget(uri: Uri): String? = withContext(Dispatchers.IO) {

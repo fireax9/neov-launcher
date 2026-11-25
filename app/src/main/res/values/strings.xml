@@ -301,4 +301,14 @@
     <string name="win_width">Width</string>
     <string name="win_height">Height</string>
     <string name="win_photo_viewer">Photos.exe</string>
+    <string name="win_webapp_window_title">App Runtime</string>
+    <string name="win_webapp_dispatched">Launched via External Runtime: %1$s</string>
+    <string name="win_webapp_sandbox_opened">Opened inside Windows 11 Compatibility Window</string>
+    <string name="win_webapp_html_warning">The downloaded file is an HTML webpage rather than a real executable binary. Download the direct .exe, .jar, or .apk installer file.</string>
+    <string name="win_webapp_need_winlator">Android ARM devices cannot run Windows x86/x64 desktop executables (.exe) like %1$s natively without a Windows compatibility layer. Install Winlator or Wine on your phone, then tap Retry External Launch.</string>
+    <string name="win_webapp_need_pojav">Java desktop launchers (.jar) such as SKLauncher or TLauncher require an Android Java/Minecraft runtime like PojavLauncher or ZalithLauncher installed to run the full desktop frame.</string>
+    <string name="win_webapp_apk_guide">Ready to install with Android Package Installer. Tap Launch External to open the system installer prompt.</string>
+    <string name="win_webapp_retry_external">Launch External Runtime</string>
+    <string name="win_webapp_find_runtime">Search Runtime in Chrome</string>
+    <string name="win_webapp_inspect_label">Binary Inspection &amp; Execution Trace</string>
 </resources>
